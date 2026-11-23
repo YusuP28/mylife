@@ -34,6 +34,7 @@ mylife/
 ├── android/
 │   ├── settings.gradle           # pluginManagement: AGP 9.3.1 + flutter-plugin-loader
 │   ├── build.gradle              # allprojects repositories only
+│   ├── gradle.properties         # JVM args (heap/metaspace), AndroidX
 │   ├── gradle/wrapper/gradle-wrapper.properties  # Gradle 9.5.0
 │   ├── app/
 │   │   ├── build.gradle          # plugins {} di atas, localProperties di bawah
@@ -42,7 +43,7 @@ mylife/
 │   │   │   ├── kotlin/com/yusup28/mylife/MainActivity.kt
 │   │   │   ├── res/values/styles.xml
 │   │   │   └── res/drawable/launch_background.xml
-│   └── local.properties          # flutter.sdk, versionCode, versionName
+│   └── local.properties          # GENERATED (tidak di-track), dibaca Flutter tool
 └── .github/workflows/build.yml   # Java 17 → Flutter 3.50 → pub get → build apk --split-per-abi
 ```
 
@@ -72,6 +73,7 @@ cd ~/mylife && git add . && git commit -m "pesan" && git push
 - `android/app/build.gradle` memakai **plugins DSL** (bukan `apply plugin:`).
 - **Flutter Gradle plugin**: `settings.gradle` memakai `includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")` **di dalam** `pluginManagement {}`, lalu plugin `dev.flutter.flutter-plugin-loader` (v1.0.0) di-apply di settings dan `dev.flutter.flutter-gradle-plugin` di-apply di `app/build.gradle`.
 - **Built-in Kotlin** (AGP 9.3.1 mengelola Kotlin): TIDAK apply `org.jetbrains.kotlin.android`; target JVM diatur via `kotlin { compilerOptions { jvmTarget = ...JVM_17 } }`.
+- `android/gradle.properties` di-commit dengan `org.gradle.jvmargs=-Xmx4G -XX:MaxMetaspaceSize=2G -XX:+HeapDumpOnOutOfMemoryError` (cegah OOM `lintVitalAnalyzeRelease`) + `android.useAndroidX=true`/`android.enableJetifier=true`.
 - `android/local.properties` **tidak di-track** (generated; `flutter.sdk`/version diisi Flutter tool). Ada di `.gitignore`.
 - Icon sementara memakai `@android:drawable/sym_def_app_icon` (placeholder sampai aset ikon asli dibuat).
 - `setup-java@v4` di workflow **sebelum** `flutter-action` (Java 17 Temurin).
