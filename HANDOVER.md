@@ -61,6 +61,7 @@ mylife/
 3. **Flutter 3.50 / Gradle 9.5.0 compliance** — `plugins {}` block **harus di baris pertama** file `.gradle`; AGP 9.3.1 butuh Gradle 9.5.0.
 4. **Split ABI arm64-v8a** — `--split-per-abi --target-platform android-arm64` untuk rilis.
 5. **Scope aman** — jangan baca/tulis `~/.ssh/`, `~/.gnupg/`, `~/.config/opencode2/`.
+6. **Post-build otomatis (tanpa konfirmasi)** — setiap build sukses langsung: update baris `Build terakhir` + link `Build terkini` di HANDOVER, commit `docs: update latest build run id in HANDOVER.md`, push `main`, lalu unduh artifact `mylife-apk` ke `build/artifact-<RUN_ID>/`.
 
 ## Perintah Rutin
 ```bash
@@ -75,6 +76,13 @@ gh run view <RUN_ID> --log-failed
 
 # Push perubahan
 cd ~/mylife && git add . && git commit -m "pesan" && git push
+
+# Alur post-build otomatis (setelah build sukses, tanpa konfirmasi)
+# 1) update baris "Build terakhir" + link "Build terkini" ke <RUN_ID>
+# 2) commit: git commit -m "docs: update latest build run id in HANDOVER.md"
+# 3) push ke main, lalu unduh:
+cd ~/mylife && mkdir -p build/artifact-<RUN_ID> \
+  && gh run download <RUN_ID> -n mylife-apk -D build/artifact-<RUN_ID>
 ```
 
 ## Catatan Teknis Penting
