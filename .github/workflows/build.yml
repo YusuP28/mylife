@@ -1,0 +1,51 @@
+name: Build APK (Split ABI)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'release-split'
+        type: choice
+        options:
+          - release-split
+          - release
+          - debug
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build APK (split ABI)
+        if: github.event.inputs.build_type == 'release-split' || github.event_name == 'push'
+        run: flutter build apk --split-per-abi --release --target-platform android-arm64
+
+      - name: Build APK (universal release)
+        if: github.event.inputs.build_type == 'release'
+        run: flutter build apk --release
+
+      - name: Build APK (debug)
+        if: github.event.inputs.build_type == 'debug'
+        run: flutter build apk --debug
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mylife-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
