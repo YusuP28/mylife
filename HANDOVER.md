@@ -11,10 +11,10 @@ Build **100% via GitHub Actions** (split ABI arm64-v8a). **Dilarang build lokal 
 | `pubspec.yaml` deps: provider, sqflite, path_provider, intl, archive | ✅ Done |
 | `lib/main.dart` minimal (MaterialApp + HomeScreen) | ✅ Done |
 | Android V2 embedding (MainActivity.kt, Manifest, styles, launch_background) | ✅ Done |
-| Gradle 9.5.0 / AGP 9.3.1 / Kotlin 2.4.20 / Java 17 | ✅ Done |
+| Gradle 9.5.0 / AGP 9.3.1 / Built-in Kotlin 2.4.10 / Java 17 | ✅ Done |
 | GitHub Actions workflow (Flutter 3.50.0, Java 17, cache Gradle) | ✅ Done |
 | Repo GitHub: `YusuP28/mylife` (public) | ✅ Done |
-| **Build terakhir:** Run ID **45122465411** (in_progress) | 🔄 Running |
+| **Build terakhir:** Run ID **45131980757** (success, artifact `mylife-apk`) | ✅ Green |
 
 ## Struktur Kunci
 ```
@@ -87,4 +87,4 @@ cd ~/mylife && git add . && git commit -m "pesan" && git push
 ## Link Cepat
 - Repo: https://github.com/YusuP28/mylife
 - Actions: https://github.com/YusuP28/mylife/actions
-- Build terkini: https://github.com/YusuP28/mylife/actions/runs/45122465411
+- Build terkini: https://github.com/YusuP28/mylife/actions/runs/45131980757
