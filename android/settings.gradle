@@ -10,5 +10,20 @@ pluginManagement {
     }
 }
 
+// Include Flutter Gradle plugin from Flutter SDK
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+}
+def flutterSdkPath = localProperties.getProperty('flutter.sdk')
+if (flutterSdkPath != null) {
+    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle") {
+        dependencySubstitution {
+            substitute module('dev.flutter.flutter-gradle-plugin') with project(':flutter-gradle-plugin')
+        }
+    }
+}
+
 rootProject.name = "mylife"
 include ':app'

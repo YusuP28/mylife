@@ -70,7 +70,7 @@ cd ~/mylife && git add . && git commit -m "pesan" && git push
 
 ## Catatan Teknis Penting
 - `android/app/build.gradle` memakai **plugins DSL** (bukan `apply plugin:`).
-- **Flutter Gradle plugin** diterapkan via `apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"` (bukan di `plugins {}`) karena tidak ada di Gradle Plugin Portal.
+- **Flutter Gradle plugin** dikonfigurasi via `settings.gradle` dengan `includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")` + dependency substitution, lalu di `app/build.gradle` cukup `id "dev.flutter.flutter-gradle-plugin"` (tanpa versi, resolved dari settings.gradle).
 - `localProperties` dipakai untuk `flutter.sdk`, `versionCode`, `versionName`.
 - `setup-java@v4` di workflow **sebelum** `flutter-action` (Java 17 Temurin).
 - `flutter.versionCode` & `flutter.versionName` di `android/local.properties`.
