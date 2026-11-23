@@ -9,7 +9,7 @@ Build **100% via GitHub Actions** (split ABI arm64-v8a). **Dilarang build lokal 
 |----------|--------|
 | Struktur folder (`lib/screens/*`, `models`, `providers`, `services`, `widgets`) | ✅ Done |
 | `pubspec.yaml` deps: provider, sqflite, path_provider, intl, archive | ✅ Done |
-| `lib/main.dart` minimal (MaterialApp + HomeScreen) | ✅ Done |
+| `lib/main.dart` + UI scaffold (tema, HomeShell, 4 screen modul, placeholder) | ✅ Done |
 | Android V2 embedding (MainActivity.kt, Manifest, styles, launch_background) | ✅ Done |
 | Gradle 9.5.0 / AGP 9.3.1 / Built-in Kotlin 2.4.10 / Java 17 | ✅ Done |
 | GitHub Actions workflow (Flutter 3.50.0, Java 17, cache Gradle) | ✅ Done |
@@ -21,16 +21,20 @@ Build **100% via GitHub Actions** (split ABI arm64-v8a). **Dilarang build lokal 
 mylife/
 ├── pubspec.yaml
 ├── lib/
-│   ├── main.dart
-│   ├── models/
-│   ├── providers/
-│   ├── services/
+│   ├── main.dart                  # entry: MaterialApp + AppTheme
+│   ├── theme/
+│   │   └── app_theme.dart         # tema terang bersih (Material 3)
+│   ├── models/                    # (kosong)
+│   ├── providers/                 # (kosong)
+│   ├── services/                  # (kosong)
 │   ├── widgets/
+│   │   └── module_placeholder.dart # kartu placeholder modul
 │   └── screens/
-│       ├── notes/
-│       ├── finance/
-│       ├── vault/
-│       └── settings/
+│       ├── home_shell.dart        # NavigationBar + IndexedStack
+│       ├── notes/notes_screen.dart
+│       ├── finance/finance_screen.dart
+│       ├── vault/vault_screen.dart
+│       └── settings/settings_screen.dart
 ├── android/
 │   ├── settings.gradle           # pluginManagement: AGP 9.3.1 + flutter-plugin-loader
 │   ├── build.gradle              # allprojects repositories only
@@ -70,6 +74,8 @@ cd ~/mylife && git add . && git commit -m "pesan" && git push
 ```
 
 ## Catatan Teknis Penting
+- **UI/navigasi**: `lib/screens/home_shell.dart` memakai `NavigationBar` (Material 3) + `IndexedStack` untuk 4 modul; tiap modul punya screen sendiri di `lib/screens/<modul>/` yang memakai `ModulePlaceholder` dari `lib/widgets/`.
+- Tema terang bersih terpusat di `lib/theme/app_theme.dart` (`AppTheme.light`).
 - `android/app/build.gradle` memakai **plugins DSL** (bukan `apply plugin:`).
 - **Flutter Gradle plugin**: `settings.gradle` memakai `includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")` **di dalam** `pluginManagement {}`, lalu plugin `dev.flutter.flutter-plugin-loader` (v1.0.0) di-apply di settings dan `dev.flutter.flutter-gradle-plugin` di-apply di `app/build.gradle`.
 - **Built-in Kotlin** (AGP 9.3.1 mengelola Kotlin): TIDAK apply `org.jetbrains.kotlin.android`; target JVM diatur via `kotlin { compilerOptions { jvmTarget = ...JVM_17 } }`.

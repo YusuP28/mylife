@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'screens/home_shell.dart';
+import 'theme/app_theme.dart';
+
 void main() {
   runApp(const MylifeApp());
 }
@@ -11,23 +14,9 @@ class MylifeApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Mylife',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const HomeScreen(),
-    );
-  }
-}
-
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Mylife App')),
-      body: const Center(child: Text('Mylife App')),
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      home: const HomeShell(),
     );
   }
 }
