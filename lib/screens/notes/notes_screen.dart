@@ -142,6 +142,18 @@ class _NotesScreenState extends State<NotesScreen> {
   }
 }
 
+String _cleanPreview(String body) {
+  return body
+      // checklist sebelum bullet
+      .replaceAll(RegExp(r'^\s*-\s+\[[ xX]\]\s+', multiLine: true), '')
+      .replaceAll(RegExp(r'^\s*-\s+', multiLine: true), '')
+      .replaceAll(RegExp(r'^\s*>\s+', multiLine: true), '')
+      .replaceAll(RegExp(r'^\s*#{1,6}\s+', multiLine: true), '')
+      .replaceAll('**', '')
+      .replaceAll('*', '')
+      .trim();
+}
+
 class _NoteTile extends StatelessWidget {
   const _NoteTile({
     required this.note,
@@ -156,6 +168,7 @@ class _NoteTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final preview = _cleanPreview(note.body);
 
     return Material(
       color: Colors.white,
@@ -182,10 +195,10 @@ class _NoteTile extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (note.body.isNotEmpty) ...<Widget>[
+                    if (preview.isNotEmpty) ...<Widget>[
                       const SizedBox(height: 6),
                       Text(
-                        note.body,
+                        preview,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(
