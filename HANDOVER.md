@@ -1,0 +1,87 @@
+# Mylife — Handover untuk AI Berikutnya
+
+## Ringkasan Proyek
+Aplikasi Flutter **All-in-One: Notes, Finance, Vault** (package `com.yusup28.mylife`).
+Build **100% via GitHub Actions** (split ABI arm64-v8a). **Dilarang build lokal di Termux/HP.**
+
+## Status Terkini (2026-11-23)
+| Komponen | Status |
+|----------|--------|
+| Struktur folder (`lib/screens/*`, `models`, `providers`, `services`, `widgets`) | ✅ Done |
+| `pubspec.yaml` deps: provider, sqflite, path_provider, intl, archive | ✅ Done |
+| `lib/main.dart` minimal (MaterialApp + HomeScreen) | ✅ Done |
+| Android V2 embedding (MainActivity.kt, Manifest, styles, launch_background) | ✅ Done |
+| Gradle 8.14 / AGP 8.11.1 / Kotlin 2.2.20 / Java 17 | ✅ Done |
+| GitHub Actions workflow (Flutter 3.50.0, Java 17, cache Gradle) | ✅ Done |
+| Repo GitHub: `YusuP28/mylife` (public) | ✅ Done |
+| **Build terakhir:** Run ID **45122465411** (in_progress) | 🔄 Running |
+
+## Struktur Kunci
+```
+mylife/
+├── pubspec.yaml
+├── lib/
+│   ├── main.dart
+│   ├── models/
+│   ├── providers/
+│   ├── services/
+│   ├── widgets/
+│   └── screens/
+│       ├── notes/
+│       ├── finance/
+│       ├── vault/
+│       └── settings/
+├── android/
+│   ├── settings.gradle           # pluginManagement: AGP 8.11.1, Kotlin 2.2.20
+│   ├── build.gradle              # allprojects repositories only
+│   ├── gradle/wrapper/gradle-wrapper.properties  # Gradle 8.14
+│   ├── app/
+│   │   ├── build.gradle          # plugins {} di atas, localProperties di bawah
+│   │   ├── src/main/
+│   │   │   ├── AndroidManifest.xml
+│   │   │   ├── kotlin/com/yusup28/mylife/MainActivity.kt
+│   │   │   ├── res/values/styles.xml
+│   │   │   └── res/drawable/launch_background.xml
+│   └── local.properties          # flutter.sdk, versionCode, versionName
+└── .github/workflows/build.yml   # Java 17 → Flutter 3.50 → pub get → build apk --split-per-abi
+```
+
+## Aturan Keras (WAJIB DIIKUTI)
+1. **No local build** — hanya `gh workflow run build.yml` atau push ke `main`.
+2. **Versi terbaru stabil** — Flutter, Kotlin, Gradle, AGP, paket Dart. Cek pub.dev/gradle.org/flutter.dev sebelum set versi.
+3. **Gradle 8.14 compliance** — `plugins {}` block **harus di baris pertama** file `.gradle`.
+4. **Split ABI arm64-v8a** — `--split-per-abi --target-platform android-arm64` untuk rilis.
+5. **Scope aman** — jangan baca/tulis `~/.ssh/`, `~/.gnupg/`, `~/.config/opencode2/`.
+
+## Perintah Rutin
+```bash
+# Cek status build
+gh run view <RUN_ID>
+
+# Trigger build manual
+gh workflow run build.yml
+
+# Lihat log error
+gh run view <RUN_ID> --log-failed
+
+# Push perubahan
+cd ~/mylife && git add . && git commit -m "pesan" && git push
+```
+
+## Catatan Teknis Penting
+- `android/app/build.gradle` memakai **plugins DSL** (bukan `apply plugin:`).
+- **Flutter Gradle plugin** diterapkan via `apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"` (bukan di `plugins {}`) karena tidak ada di Gradle Plugin Portal.
+- `localProperties` dipakai untuk `flutter.sdk`, `versionCode`, `versionName`.
+- `setup-java@v4` di workflow **sebelum** `flutter-action` (Java 17 Temurin).
+- `flutter.versionCode` & `flutter.versionName` di `android/local.properties`.
+
+## Langkah Berikutnya (saat build sukses)
+1. Unduh artifact APK dari Actions → `mylife-apk` (arm64-v8a).
+2. Mulai implementasi fitur per modul: Notes → Finance → Vault → Settings.
+3. Gunakan **Provider** untuk state management, **sqflite** untuk persistence.
+4. Tulis test minimal untuk logika non-trivial (TDD ringan).
+
+## Link Cepat
+- Repo: https://github.com/YusuP28/mylife
+- Actions: https://github.com/YusuP28/mylife/actions
+- Build terkini: https://github.com/YusuP28/mylife/actions/runs/45122465411
