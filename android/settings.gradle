@@ -12,7 +12,7 @@ pluginManagement {
 
 // Include Flutter Gradle plugin from Flutter SDK
 def localProperties = new Properties()
-def localPropertiesFile = rootProject.file('local.properties')
+def localPropertiesFile = file('local.properties')
 if (localPropertiesFile.exists()) {
     localProperties.load(new FileInputStream(localPropertiesFile))
 }
