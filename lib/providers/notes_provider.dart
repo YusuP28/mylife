@@ -10,12 +10,34 @@ class NotesProvider extends ChangeNotifier {
   final DatabaseService _service;
 
   List<Note> _notes = <Note>[];
+  String _query = '';
   bool _loading = false;
   String? _error;
 
   List<Note> get notes => List<Note>.unmodifiable(_notes);
+
+  List<Note> get visibleNotes {
+    final keyword = _query.trim().toLowerCase();
+    if (keyword.isEmpty) return notes;
+
+    return _notes
+        .where(
+          (note) =>
+              note.title.toLowerCase().contains(keyword) ||
+              note.body.toLowerCase().contains(keyword),
+        )
+        .toList(growable: false);
+  }
+
+  String get query => _query;
   bool get loading => _loading;
   String? get error => _error;
+
+  void setQuery(String value) {
+    if (_query == value) return;
+    _query = value;
+    notifyListeners();
+  }
 
   Future<void> loadNotes() async {
     _loading = true;

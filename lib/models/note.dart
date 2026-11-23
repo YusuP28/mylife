@@ -23,9 +23,15 @@ class Note {
 
   factory Note.fromMap(Map<String, Object?> map) => Note(
         id: map['id'] as int?,
-        title: map['title']! as String,
+        title: map['title'] as String? ?? '',
         body: map['body'] as String? ?? '',
-        createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at']! as int),
-        updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updated_at']! as int),
+        createdAt: _dateFrom(map['created_at']),
+        updatedAt: _dateFrom(map['updated_at']),
       );
+
+  static DateTime _dateFrom(Object? value) {
+    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
+  }
 }

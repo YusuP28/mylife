@@ -14,11 +14,13 @@ class NotesScreen extends StatefulWidget {
 class _NotesScreenState extends State<NotesScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _bodyController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void dispose() {
     _titleController.dispose();
     _bodyController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -96,6 +98,29 @@ class _NotesScreenState extends State<NotesScreen> {
                 style: TextStyle(color: theme.colorScheme.onErrorContainer),
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: TextField(
+              controller: _searchController,
+              onChanged: state.setQuery,
+              decoration: InputDecoration(
+                hintText: 'Cari catatan...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Hapus pencarian',
+                        onPressed: () {
+                          _searchController.clear();
+                          state.setQuery('');
+                        },
+                      ),
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ),
           Expanded(
             child: _buildBody(state, theme),
           ),
@@ -123,6 +148,40 @@ class _NotesScreenState extends State<NotesScreen> {
           onDelete: () => state.deleteNote(note.id!),
         );
       },
+    );
+  }
+}
+
+class _NoResults extends StatelessWidget {
+  const _NoResults({required this.query});
+
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(
+            Icons.search_off,
+            size: 56,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 12),
+          Text('Tidak ada hasil', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text(
+            'Tidak ditemukan catatan untuk "$query".',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
