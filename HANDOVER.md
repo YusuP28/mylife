@@ -10,6 +10,7 @@ Build **100% via GitHub Actions** (split ABI arm64-v8a). **Dilarang build lokal 
 | Struktur folder (`lib/screens/*`, `models`, `providers`, `services`, `widgets`) | ✅ Done |
 | `pubspec.yaml` deps: provider, sqflite, path_provider, intl, archive | ✅ Done |
 | `lib/main.dart` + UI scaffold (tema, HomeShell, 4 screen modul, placeholder) | ✅ Done |
+| Modul Catatan: `Note` + `DatabaseService` (sqflite) + `NotesProvider` + list/FAB | ✅ Done |
 | Android V2 embedding (MainActivity.kt, Manifest, styles, launch_background) | ✅ Done |
 | Gradle 9.5.0 / AGP 9.3.1 / Built-in Kotlin 2.4.10 / Java 17 | ✅ Done |
 | GitHub Actions workflow (Flutter 3.50.0, Java 17, cache Gradle) | ✅ Done |
@@ -21,12 +22,15 @@ Build **100% via GitHub Actions** (split ABI arm64-v8a). **Dilarang build lokal 
 mylife/
 ├── pubspec.yaml
 ├── lib/
-│   ├── main.dart                  # entry: MaterialApp + AppTheme
+│   ├── main.dart                  # entry: ChangeNotifierProvider > MaterialApp
 │   ├── theme/
 │   │   └── app_theme.dart         # tema terang bersih (Material 3)
-│   ├── models/                    # (kosong)
-│   ├── providers/                 # (kosong)
-│   ├── services/                  # (kosong)
+│   ├── models/
+│   │   └── note.dart              # entity Note + toMap/fromMap
+│   ├── providers/
+│   │   └── notes_provider.dart    # ChangeNotifier: load/add/update/delete
+│   ├── services/
+│   │   └── database_service.dart  # singleton sqflite, mylife.db, tabel notes
 │   ├── widgets/
 │   │   └── module_placeholder.dart # kartu placeholder modul
 │   └── screens/
@@ -74,6 +78,7 @@ cd ~/mylife && git add . && git commit -m "pesan" && git push
 ```
 
 ## Catatan Teknis Penting
+- **Arsitektur modul Catatan**: `Note` (model murni) → `DatabaseService` (singleton sqflite, `mylife.db`, tabel `notes` dengan `CREATE TABLE IF NOT EXISTS`, belum ada migrasi) → `NotesProvider` (`ChangeNotifier`) → UI. Provider didaftarkan di `main.dart` dan di-`loadNotes()` saat inisialisasi. Modul lain masih placeholder.
 - **UI/navigasi**: `lib/screens/home_shell.dart` memakai `NavigationBar` (Material 3) + `IndexedStack` untuk 4 modul; tiap modul punya screen sendiri di `lib/screens/<modul>/` yang memakai `ModulePlaceholder` dari `lib/widgets/`.
 - Tema terang bersih terpusat di `lib/theme/app_theme.dart` (`AppTheme.light`).
 - `android/app/build.gradle` memakai **plugins DSL** (bukan `apply plugin:`).
