@@ -20,7 +20,7 @@ def flutterSdkPath = localProperties.getProperty('flutter.sdk')
 if (flutterSdkPath != null) {
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle") {
         dependencySubstitution {
-            substitute module('dev.flutter.flutter-gradle-plugin') with project(':flutter-gradle-plugin')
+            substitute module('dev.flutter:flutter-gradle-plugin') with project(':flutter-gradle-plugin')
         }
     }
 }
