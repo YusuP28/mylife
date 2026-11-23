@@ -19,7 +19,13 @@ class NoteEditorScreen extends StatefulWidget {
 }
 
 class _NoteEditorScreenState extends State<NoteEditorScreen> {
-  static const List<String> _linePrefixes = <String>['- [ ] ', '- ', '> ', '# '];
+  static const List<String> _linePrefixes = <String>[
+    '- [ ] ',
+    '- ',
+    '1. ',
+    '> ',
+    '# ',
+  ];
 
   late final TextEditingController _titleController;
   late final TextEditingController _bodyController;
@@ -127,6 +133,70 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         baseOffset: selection.start + marker.length,
         extentOffset: selection.end + marker.length,
       ),
+    );
+  }
+
+  void _insertTextAtCursor(String insert) {
+    final value = _bodyController.value;
+    final text = value.text;
+    final cursor = value.selection.isValid
+        ? value.selection.start
+        : text.length;
+    final updated = text.replaceRange(cursor, cursor, insert);
+    _bodyController.value = TextEditingValue(
+      text: updated,
+      selection: TextSelection.collapsed(offset: cursor + insert.length),
+    );
+  }
+
+  void _insertBlock(String line) {
+    final value = _bodyController.value;
+    final text = value.text;
+    final cursor = value.selection.isValid
+        ? value.selection.start
+        : text.length;
+    final needsLeadingNewline = cursor > 0 && text[cursor - 1] != '\n';
+    final insert = '${needsLeadingNewline ? '\n' : ''}$line\n';
+    final updated = text.replaceRange(cursor, cursor, insert);
+    _bodyController.value = TextEditingValue(
+      text: updated,
+      selection: TextSelection.collapsed(offset: cursor + insert.length),
+    );
+  }
+
+  void _toggleChecklistState() {
+    final value = _bodyController.value;
+    final text = value.text;
+    final cursor = value.selection.isValid
+        ? value.selection.start
+        : text.length;
+    final lineStart = _lineStartOf(text, cursor);
+    final lineEnd = _lineEndOf(text, cursor);
+    final line = text.substring(lineStart, lineEnd);
+
+    final checked = RegExp(r'^\s*-\s+\[[xX]\]\s+');
+    final unchecked = RegExp(r'^\s*-\s+\[ \]\s+');
+
+    String newLine;
+    if (checked.hasMatch(line)) {
+      newLine = line.replaceFirst(checked, '- [ ] ');
+    } else if (unchecked.hasMatch(line)) {
+      newLine = line.replaceFirst(unchecked, '- [x] ');
+    } else {
+      var stripped = line;
+      for (final marker in _linePrefixes) {
+        if (stripped.startsWith(marker)) {
+          stripped = stripped.substring(marker.length);
+          break;
+        }
+      }
+      newLine = '- [ ] $stripped';
+    }
+
+    final updated = text.replaceRange(lineStart, lineEnd, newLine);
+    _bodyController.value = TextEditingValue(
+      text: updated,
+      selection: TextSelection.collapsed(offset: lineStart + newLine.length),
     );
   }
 
@@ -347,6 +417,38 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             Icons.format_quote,
             'Kutipan',
             () => _toggleLinePrefix('> '),
+          ),
+          _toolButton(
+            Icons.format_strikethrough,
+            'Coret',
+            () => _wrapSelection('~~'),
+          ),
+          _toolButton(
+            Icons.code,
+            'Kode inline',
+            () => _wrapSelection('`'),
+          ),
+          _toolButton(
+            Icons.format_list_numbered,
+            'Daftar angka',
+            () => _toggleLinePrefix('1. '),
+          ),
+          _toolButton(
+            Icons.check_box_outlined,
+            'Centang checklist',
+            _toggleChecklistState,
+          ),
+          _toolButton(
+            Icons.horizontal_rule,
+            'Garis pemisah',
+            () => _insertBlock('---'),
+          ),
+          _toolButton(
+            Icons.event,
+            'Sisipkan tanggal',
+            () => _insertTextAtCursor(
+              '${DateFormat.yMMMd('id_ID').format(DateTime.now())} ',
+            ),
           ),
         ],
       ),

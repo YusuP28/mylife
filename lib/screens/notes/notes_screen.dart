@@ -144,13 +144,25 @@ class _NotesScreenState extends State<NotesScreen> {
 
 String _cleanPreview(String body) {
   return body
+      // garis pemisah --- / *** / ___
+      .replaceAll(RegExp(r'^\s*[-*_]{3,}\s*$', multiLine: true), '')
       // checklist sebelum bullet
       .replaceAll(RegExp(r'^\s*-\s+\[[ xX]\]\s+', multiLine: true), '')
       .replaceAll(RegExp(r'^\s*-\s+', multiLine: true), '')
+      // daftar angka
+      .replaceAll(RegExp(r'^\s*\d+\.\s+', multiLine: true), '')
+      // kutipan
       .replaceAll(RegExp(r'^\s*>\s+', multiLine: true), '')
+      // heading
       .replaceAll(RegExp(r'^\s*#{1,6}\s+', multiLine: true), '')
+      // coret, tebal, miring
+      .replaceAll('~~', '')
       .replaceAll('**', '')
       .replaceAll('*', '')
+      // kode inline
+      .replaceAll('`', '')
+      // rapatkan baris kosong berlebih
+      .replaceAll(RegExp(r'\n{3,}'), '\n\n')
       .trim();
 }
 
