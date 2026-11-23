@@ -69,11 +69,12 @@ cd ~/mylife && git add . && git commit -m "pesan" && git push
 ```
 
 ## Catatan Teknis Penting
-- `android/app/build.gradle` memakai **plugins DSL** (bukan `apply plugin:`) untuk Android & Kotlin plugin.
-- **Flutter Gradle plugin** diterapkan via `apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"` (standar Flutter SDK) di `app/build.gradle`, dengan `flutterRoot` dari `local.properties`.
-- `localProperties` dipakai untuk `flutter.sdk`, `versionCode`, `versionName`.
+- `android/app/build.gradle` memakai **plugins DSL** (bukan `apply plugin:`).
+- **Flutter Gradle plugin** didaftarkan via `settings.gradle` (`includeBuild` ke `$flutterSdkPath/packages/flutter_tools/gradle` + `apply false`), lalu `id "dev.flutter.flutter-gradle-plugin"` di `app/build.gradle`.
+- **Built-in Kotlin** (AGP 9.3.1 mengelola Kotlin): TIDAK apply `org.jetbrains.kotlin.android`; target JVM diatur via `kotlin { compilerOptions { jvmTarget = ...JVM_17 } }`.
+- `android/local.properties` **tidak di-track** (generated; `flutter.sdk`/version diisi Flutter tool). Ada di `.gitignore`.
+- Icon sementara memakai `@android:drawable/sym_def_app_icon` (placeholder sampai aset ikon asli dibuat).
 - `setup-java@v4` di workflow **sebelum** `flutter-action` (Java 17 Temurin).
-- `flutter.versionCode` & `flutter.versionName` di `android/local.properties`.
 
 ## Langkah Berikutnya (saat build sukses)
 1. Unduh artifact APK dari Actions → `mylife-apk` (arm64-v8a).
