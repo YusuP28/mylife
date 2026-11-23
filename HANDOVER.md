@@ -32,7 +32,7 @@ mylife/
 │       ├── vault/
 │       └── settings/
 ├── android/
-│   ├── settings.gradle           # pluginManagement: AGP 9.3.1, Kotlin 2.4.20
+│   ├── settings.gradle           # pluginManagement: AGP 9.3.1 + flutter-plugin-loader
 │   ├── build.gradle              # allprojects repositories only
 │   ├── gradle/wrapper/gradle-wrapper.properties  # Gradle 9.5.0
 │   ├── app/
@@ -70,7 +70,7 @@ cd ~/mylife && git add . && git commit -m "pesan" && git push
 
 ## Catatan Teknis Penting
 - `android/app/build.gradle` memakai **plugins DSL** (bukan `apply plugin:`).
-- **Flutter Gradle plugin** didaftarkan via `settings.gradle` (`includeBuild` ke `$flutterSdkPath/packages/flutter_tools/gradle` + `apply false`), lalu `id "dev.flutter.flutter-gradle-plugin"` di `app/build.gradle`.
+- **Flutter Gradle plugin**: `settings.gradle` memakai `includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")` **di dalam** `pluginManagement {}`, lalu plugin `dev.flutter.flutter-plugin-loader` (v1.0.0) di-apply di settings dan `dev.flutter.flutter-gradle-plugin` di-apply di `app/build.gradle`.
 - **Built-in Kotlin** (AGP 9.3.1 mengelola Kotlin): TIDAK apply `org.jetbrains.kotlin.android`; target JVM diatur via `kotlin { compilerOptions { jvmTarget = ...JVM_17 } }`.
 - `android/local.properties` **tidak di-track** (generated; `flutter.sdk`/version diisi Flutter tool). Ada di `.gitignore`.
 - Icon sementara memakai `@android:drawable/sym_def_app_icon` (placeholder sampai aset ikon asli dibuat).
