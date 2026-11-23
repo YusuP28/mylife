@@ -11,7 +11,7 @@ Build **100% via GitHub Actions** (split ABI arm64-v8a). **Dilarang build lokal 
 | `pubspec.yaml` deps: provider, sqflite, path_provider, intl, archive | ✅ Done |
 | `lib/main.dart` minimal (MaterialApp + HomeScreen) | ✅ Done |
 | Android V2 embedding (MainActivity.kt, Manifest, styles, launch_background) | ✅ Done |
-| Gradle 8.14 / AGP 8.11.1 / Kotlin 2.2.20 / Java 17 | ✅ Done |
+| Gradle 9.5.0 / AGP 9.3.1 / Kotlin 2.4.20 / Java 17 | ✅ Done |
 | GitHub Actions workflow (Flutter 3.50.0, Java 17, cache Gradle) | ✅ Done |
 | Repo GitHub: `YusuP28/mylife` (public) | ✅ Done |
 | **Build terakhir:** Run ID **45122465411** (in_progress) | 🔄 Running |
@@ -32,9 +32,9 @@ mylife/
 │       ├── vault/
 │       └── settings/
 ├── android/
-│   ├── settings.gradle           # pluginManagement: AGP 8.11.1, Kotlin 2.2.20
+│   ├── settings.gradle           # pluginManagement: AGP 9.3.1, Kotlin 2.4.20
 │   ├── build.gradle              # allprojects repositories only
-│   ├── gradle/wrapper/gradle-wrapper.properties  # Gradle 8.14
+│   ├── gradle/wrapper/gradle-wrapper.properties  # Gradle 9.5.0
 │   ├── app/
 │   │   ├── build.gradle          # plugins {} di atas, localProperties di bawah
 │   │   ├── src/main/
@@ -49,7 +49,7 @@ mylife/
 ## Aturan Keras (WAJIB DIIKUTI)
 1. **No local build** — hanya `gh workflow run build.yml` atau push ke `main`.
 2. **Versi terbaru stabil** — Flutter, Kotlin, Gradle, AGP, paket Dart. Cek pub.dev/gradle.org/flutter.dev sebelum set versi.
-3. **Gradle 8.14 compliance** — `plugins {}` block **harus di baris pertama** file `.gradle`.
+3. **Flutter 3.50 / Gradle 9.5.0 compliance** — `plugins {}` block **harus di baris pertama** file `.gradle`; AGP 9.3.1 butuh Gradle 9.5.0.
 4. **Split ABI arm64-v8a** — `--split-per-abi --target-platform android-arm64` untuk rilis.
 5. **Scope aman** — jangan baca/tulis `~/.ssh/`, `~/.gnupg/`, `~/.config/opencode2/`.
 
