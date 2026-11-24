@@ -10,12 +10,9 @@ Build **100% via GitHub Actions** (split ABI arm64-v8a). **Dilarang build lokal 
 | Struktur folder (`lib/screens/*`, `models`, `providers`, `services`, `widgets`) | ✅ Done |
 | `pubspec.yaml` deps: provider, sqflite, path_provider, intl, archive | ✅ Done |
 | `lib/main.dart` + UI scaffold (tema, HomeShell, 4 screen modul, placeholder) | ✅ Done |
-| Modul Catatan: `Note` + `DatabaseService` (sqflite) + `NotesProvider` + list/FAB + pencarian | ✅ Done |
+| Modul Catatan: `Note` + `DatabaseService` + `NotesProvider` + list/FAB + pencarian | ✅ Done |
 | Android V2 embedding (MainActivity.kt, Manifest, styles, launch_background) | ✅ Done |
 | Gradle 9.5.0 / AGP 9.3.1 / Built-in Kotlin 2.4.10 / Java 17 | ✅ Done |
-| GitHub Actions workflow (Flutter 3.50.0, Java 17, cache Gradle) | ✅ Done |
-| Repo GitHub: `YusuP28/mylife` (public) | ✅ Done |
-**| **Build terakhir:** Run ID **45344414554** (success, artifact `mylife-apk`) | ✅ Green |**
 
 ## Struktur Kunci
 ```
@@ -26,18 +23,26 @@ mylife/
 │   ├── theme/
 │   │   └── app_theme.dart         # tema terang bersih (Material 3)
 │   ├── models/
-│   │   └── note.dart              # entity Note + toMap/fromMap
+│   │   ├── note.dart              # entity Note + toMap/fromMap
+│   │   ├── finance_transaction.dart
+│   │   └── vault_item.dart
 │   ├── providers/
-│   │   └── notes_provider.dart    # ChangeNotifier: load/add/update/delete
+│   │   ├── notes_provider.dart    # ChangeNotifier
+│   │   ├── finance_provider.dart
+│   │   └── vault_provider.dart
 │   ├── services/
-│   │   └── database_service.dart  # singleton sqflite, mylife.db, tabel notes
+│   │   ├── database_service.dart  # singleton sqflite, mylife.db
+│   │   └── vault_encryption_service.dart  # interface + NoOp (Tahap 4A)
 │   ├── widgets/
 │   │   └── module_placeholder.dart # kartu placeholder modul
 │   └── screens/
 │       ├── home_shell.dart        # NavigationBar + IndexedStack
 │       ├── notes/notes_screen.dart
+│       ├── notes/note_editor_screen.dart
 │       ├── finance/finance_screen.dart
+│       ├── finance/finance_editor_screen.dart
 │       ├── vault/vault_screen.dart
+│       ├── vault/vault_editor_screen.dart
 │       └── settings/settings_screen.dart
 ├── android/
 │   ├── settings.gradle           # pluginManagement: AGP 9.3.1 + flutter-plugin-loader
@@ -62,7 +67,7 @@ mylife/
 4. **Split ABI arm64-v8a** — `--split-per-abi --target-platform android-arm64` untuk rilis.
 5. **Scope aman** — jangan baca/tulis `~/.ssh/`, `~/.gnupg/`, `~/.config/opencode2/`.
 6. **Post-build otomatis (tanpa konfirmasi)** — setiap build sukses langsung: update baris `Build terakhir` + link `Build terkini` di HANDOVER, commit `docs: update latest build run id in HANDOVER.md`, push `main`, lalu unduh artifact `mylife-apk` ke `build/artifact-<RUN_ID>/`.
-7. **Pemantauan build manual** — Bos memantau status build sendiri. Agent **tidak** polling / menjalankan `gh run view` / `gh run watch` kecuali diminta. Alur post-build (poin 6) dijalankan setelah Bos mengabari build hijau atau memberi Run ID final.
+7. **Pemantauan build manual** — Bos memantau status build sendiri. Agent **tidak** polling / menjalankan `gh run view` / `gh run watch` kecuali diminta.
 
 ## Perintah Rutin
 ```bash
@@ -87,30 +92,38 @@ cd ~/mylife && mkdir -p build/artifact-<RUN_ID> \
 ```
 
 ## Catatan Teknis Penting
-- **Arsitektur modul Catatan**: `Note` (model murni) → `DatabaseService` (singleton sqflite, `mylife.db`, tabel `notes` dengan `CREATE TABLE IF NOT EXISTS`, `_dbVersion = 1`, belum ada migrasi) → `NotesProvider` (`ChangeNotifier`) → UI. Provider didaftarkan di `main.dart` dan di-`loadNotes()` saat inisialisasi. Modul lain masih placeholder.
-- **Arsitektur modul Keuangan (Tahap 1)**: `FinanceTransaction` (model) → `DatabaseService` (tabel `transactions` dengan `type`, `amount` INTEGER, `category`, `note`, `occurred_at`, `created_at`, `updated_at`; `_dbVersion` dinaikkan ke 2 saat tahap ini, `onUpgrade` menambah tabel tanpa menyentuh `notes`). → `FinanceProvider` (`ChangeNotifier` + `balance`, `totalIncome`, `totalExpense`) → `main.dart` mendaftarkan provider (nested `ChangeNotifierProvider`; `MultiProvider` pernah gagal karena type parameter).
-- **Keuangan Tahap 2**: `FinanceScreen` menampilkan kartu ringkasan (saldo total, pemasukan, pengeluaran, format `NumberFormat.currency(id_ID)`), daftar transaksi (kategori, catatan, tanggal, nominal dengan indikator warna hijau-merah), state `loading`/`error`/`empty`. `_dbVersion` tetap 2.
-- **Keuangan Tahap 3**: `FinanceEditorScreen` (`lib/screens/finance/finance_editor_screen.dart`) untuk tambah (`transaction == null`) dan edit; field tipe (SegmentedButton pemasukan/pengeluaran), nominal `digitsOnly` + validasi `> 0` (INTEGER rupiah), kategori, catatan opsional, tanggal via `showDatePicker`. `FinanceScreen`: FAB `+` dan tombol empty-state membuka editor, tap kartu membuka edit, ikon hapus membuka dialog konfirmasi lalu `deleteTransaction` + `loadTransactions`. Tidak ada aksi dummy, tanpa dependency baru, skema DB tidak berubah.
-- **Keuangan Tahap 4**: pencarian + filter di `FinanceProvider` (state `query`, `typeFilter`, `monthFilter`, `categoryFilter`, getter `visibleTransactions`, `categories`, `months`, `hasActiveFilter`, `resetFilters()`), semuanya in-memory di atas `_transactions` yang sudah terurut `occurred_at DESC` — tanpa query DB baru dan tanpa ubah skema. `FinanceScreen`: kolom pencarian (kategori/catatan/nominal), chip filter tipe/bulan/kategori, tombol Reset saat filter aktif, dan state "tidak ada hasil" dengan aksi reset nyata. Kartu ringkasan tetap menghitung seluruh transaksi, bukan hasil filter.
-- **Vault Tahap 1 (data layer)**: ditunjuk di HANDOVER yang lama. Tahap 3 belum ada.
-- **Settings Tahap 1**: `SettingsScreen` menampilkan ringkasan status data lokal (catatan, Keuangan, Vault), tautan info "Tentang", security warning. Tidak ada aksi dummy.
-- **Settings Tahap 2**: `VaultItem` (`lib/models/vault_item.dart`: `title`, `username`, `password`, `url`, `notes`, `created_at`, `updated_at`) → `DatabaseService` dengan tabel `vault_items` (`CREATE TABLE IF NOT EXISTS`, SQL dipakai bersama `onCreate`/`onUpgrade`) dan CRUD `getVaultItems`/`insertVaultItem`/`updateVaultItem`/`deleteVaultItem`; `_dbVersion` 3, migrasi `oldVersion < 3` hanya menambah tabel baru tanpa menyentuh `notes`/`transactions`. → `VaultProvider` (state `items`/`loading`/`error`, `addItem`/`updateItem`/`deleteItem`, judul kosong ditolak `ArgumentError`) sudah didaftarkan di `main.dart` dan di-`loadItems()` saat start. **Data sensitif masih teks biasa di SQLite lokal — enkripsi belum ada dan butuh dependency baru; jangan simpan kredensial produksi sebelum itu beres.**
-- **Vault Tahap 2**: `VaultScreen` menampilkan daftar item brankas, pencarian ringan (placeholder filter), *empty state* (“Belum ada item brankas”) dengan tombol “Tambah brankas”, dan *error state* dengan aksi muat ulang nyata. Setiap item menampilkan judul, URL, username, dan password yang **dinamis disembunyikan** (ikon `🔒`/`🔓` toggle). Timestamp `updated_at` ditunjukkan di bawah. Tidak ada tombol hapus/edit (ditunda ke Tahap 3). `_dbVersion` tetap 3, tidak ada dependency baru, semua aksi method nyata. **Peringatan: data tetap plaintext — jangan simpan kredensial penting sebelum Tahap 4 (enkripsi).**
-- **Vault Tahap 3**: `VaultScreen` terhubung ke `VaultProvider.visibleItems` dengan pencarian aktif (filter di memori, tidak query DB). TextField pencarian dengan tombol bersihkan. Setiap item punya ikon mata (toggle lihat/sembunyikan password), ikon salin ke clipboard (SnackBar konfirmasi), dan ikon hapus (dialog konfirmasi lalu `deleteItem`). Tap item membuka `VaultEditorScreen`. FAB `+` membuka editor baru. `VaultEditorScreen`: 5 field (judul*, username, password, URL, catatan), radio toggle lihat password, tombol salin di samping field password, simpan di AppBar (`✓`). `_dbVersion` tetap 3, tidak ada dependency tambahan, semua aksi method nyata — tidak ada placeholder dummy.
-- **Pencarian catatan**: `NotesProvider._query` + `setQuery()` + getter `visibleNotes` (filter in-memory judul/isi, case-insensitive). `Note.fromMap()` pakai fallback untuk field null/format lama agar baris lama tidak crash, tanpa ubah skema DB.
-- **Editor catatan**: `NoteEditorScreen` (`lib/screens/notes/note_editor_screen.dart`) untuk buat (`note == null`) dan edit (`note` terisi) memakai `addNote`/`updateNote`. AppBar punya simpan (`✓`) + menu `⋮` (salin, bersihkan, hapus saat edit). Toolbar: undo/redo (`UndoHistoryController`), heading, bold, italic, bullet, checklist, kutipan, coret (`~~`), kode inline (`` ` ``), daftar angka (`1. `), toggle centang checklist (`- [ ]`/`- [x]`), garis pemisah (`---`), dan sisip tanggal (`id_ID`). Format disimpan sebagai marker teks ringan di kolom `body` (tanpa ubah skema). Ada guard perubahan belum disimpan saat keluar.
-- **Kartu catatan**: bisa diketuk untuk membuka editor, menampilkan waktu terakhir diubah (`DateFormat` locale `id_ID`; inisialisasi di `main.dart`), preview dibersihkan dari marker (`_cleanPreview`), dan tombol hapus memakai dialog konfirmasi.
-- **UI/navigasi**: `lib/screens/home_shell.dart` memakai `NavigationBar` (Material 3) + `IndexedStack` untuk 4 modul; tiap modul punya screen sendiri di `lib/screens/<modul>/` yang memakai `ModulePlaceholder` dari `lib/widgets/`.
-- **Pengaturan Tahap 1**: `SettingsScreen` menampilkan ringkasan status data lokal (catatan, transaksi Keuangan, item Vault) dengan `SummaryCard`, tautan info "Tentang", serta `_SecurityWarningCard` (3 poin peringatan plaintext SQLite). Tidak ada aksi dummy, tidak ubah skema DB (`_dbVersion` tetap 3), tidak ada dependency baru. **Peringatan utama: password di Vault tetap plaintext; enkripsi butuh Tahap 4 + dependency kripto.**
+- **Arsitektur modul Catatan**: `Note` (model murni) → `DatabaseService` (sqflite, `mylife.db`, tabel `notes` dengan `CREATE TABLE IF NOT EXISTS`, `_dbVersion = 1`) → `NotesProvider` (`ChangeNotifier`) → UI. Provider didaftarkan di `main.dart` dan di-`loadNotes()` saat inisialisasi. **Pencarian**: `NotesProvider._query` + `setQuery()` + getter `visibleNotes` (filter in-memory, case-insensitive). **Editor**: `NoteEditorScreen` untuk create/edit dengan toolbar format ringan (markdown-style markers), undo/redo, save guard. **Peringatan**: tidak ada enkripsi.
+- **Arsitektur modul Keuangan (Tahap 1)**: `FinanceTransaction` (model) → `DatabaseService` (tabel `transactions` dengan `type`, `amount` INTEGER, `category`, `note`, `occurred_at`, `created_at`, `updated_at`; `_dbVersion = 2`) → `FinanceProvider` → `main.dart`. **Tahap 2**: `FinanceScreen` dengan kartu ringkasan (saldo, pemasukan, pengeluaran, format `NumberFormat.currency(id_ID)`), daftar transaksi berwarna hijau-merah. **Tahap 3**: `FinanceEditorScreen` dengan `SegmentedButton` tipe, validasi nominal, `showDatePicker`. **Tahap 4**: pencarian + filter in-memory (`visibleTransactions`, `typeFilter`, `monthFilter`, `categoryFilter`, `resetFilters()`). Semua tahap: tidak ubah skema DB.
+- **Vault Tahap 1 (data layer)**: tabel `vault_items` (id, title*, username, password, url, notes, created_at, updated_at), CRUD via `DatabaseService` (`_dbVersion = 3`), tidak ada enkripsi.
+- **Vault Tahap 2**: `VaultScreen` dengan list item, password toggle (`🔒`/`🔓`), timestamp, tidak ada hapus/edit.
+- **Vault Tahat 3**: `VaultProvider.visibleItems` dengan pencarian aktif, `VaultEditorScreen` (5 field), copy password ke clipboard, delete dengan dialog konfirmasi. Semua method nyata, tidak ada placeholder dummy. **Peringatan: data tetap plaintext — jangan simpan kredensial penting sebelum Tahap 4 (enkripsi).**
+- **Pengaturan Tahap 1**: `SettingsScreen` menampilkan ringkasan status data lokal (catatan, Keuangan, Vault), tautan info "Tentang", security warning. Tidak ada aksi dummy, tidak ubah skema DB (`_dbVersion` tetap 3), tidak ada dependency baru.
 - **Settings Tahap 2**: tambahkan `DataManagementSection` dengan tombol reset per modul (Catatan / Keuangan / Vault), dialog konfirmasi ganda, dan SnackBar feedback (`clearAllNotes`, `clearAllTransactions`, `clearAllItems`). Semua aksi method nyata. `_dbVersion` tetap 3, tidak ada dependency baru.
-- Tema terang bersih terpusat di `lib/theme/app_theme.dart` (`AppTheme.light`).
-- `android/app/build.gradle` memakai **plugins DSL** (bukan `apply plugin:`).
-- **Flutter Gradle plugin**: `settings.gradle` memakai `includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")` **di dalam** `pluginManagement {}`, lalu plugin `dev.flutter.flutter-plugin-loader` (v1.0.0) di-apply di settings dan `dev.flutter.flutter-gradle-plugin` di-apply di `app/build.gradle`.
-- **Built-in Kotlin** (AGP 9.3.1 mengelola Kotlin): TIDAK apply `org.jetbrains.kotlin.android`; target JVM diatur via `kotlin { compilerOptions { jvmTarget = ...JVM_17 } }`.
-- `android/gradle.properties` di-commit dengan `org.gradle.jvmargs=-Xmx4G -XX:MaxMetaspaceSize=2G -XX:+HeapDumpOnOutOfMemoryError` (cegah OOM `lintVitalAnalyzeRelease`) + `android.useAndroidX=true`/`android.enableJetifier=true`.
+- **Tema terang bersih** terpusat di `lib/theme/app_theme.dart` (`AppTheme.light`).
+- **Flutter Gradle plugin**: `settings.gradle` memakai `includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")` **di dalam** `pluginManagement {}`, lalu plugin `dev.flutter.flutter-plugin-loader` di-apply di settings dan `dev.flutter.flutter-gradle-plugin` di-apply di `app/build.gradle`.
+- **Built-in Kotlin** (AGP 9.3.1 mengelola Kotlin): TIDAK apply `org.jetbrains.kotlin.android`; target JVM diatur via `kotlin { compilerOptions { jvmTarget = JVM_17 } }`.
+- `android/gradle.properties` di-commit dengan `org.gradle.jvmargs=-Xmx4G -XX:MaxMetaspaceSize=2G -XX:+HeapDumpOnOutOfMemoryError` + `android.useAndroidX=true`/`android.enableJetifier=true`.
 - `android/local.properties` **tidak di-track** (generated; `flutter.sdk`/version diisi Flutter tool). Ada di `.gitignore`.
 - Icon sementara memakai `@android:drawable/sym_def_app_icon` (placeholder sampai aset ikon asli dibuat).
 - `setup-java@v4` di workflow **sebelum** `flutter-action` (Java 17 Temurin).
+
+## Pengaturan Keamanan Vault (Tahap 4A — audit & abstraksi)
+- **Field sensitif yang akan dienkripsi**: `VaultItem.password` (wajib), `VaultItem.notes` (opsional).
+- **Titik akses yang harus di-audit**:
+  - `VaultItem.fromMap()` / `toMap()` — deserialisasi/serialisasi.
+  - `VaultProvider.addItem()` / `updateItem()` — harus enkripsi sebelum store.
+  - `VaultProvider.loadItems()` — harus decrypt setelah ambil (Tahap 4B).
+  - `VaultScreen` / `VaultEditorScreen` — tidak menyimpan password di UI/ternyata.
+- **Kerangka (`lib/services/vault_encryption_service.dart`)**:
+  - `VaultEncryptionService` — interface abstrak.
+  - `NoOpEncryption` — implementasi identity (Tahap 4A).
+  - `vaultEncryptionService` — singleton default.
+- **Prasyarat Tahap 4B** (enkripsi produksi):
+  1. Tambah dependency `encrypt` atau `cryptography` di `pubspec.yaml`.
+  2. Implementasikan `VaultEncryptionService` dengan AES-256-GCM.
+  3. Tambahkan master password / kunci utama pengguna (Keychain / Keystore).
+  4. Naikkan `_dbVersion` ke **4** untuk migration (kolom `is_encrypted INTEGER` atau prefix enkripsi di `password`).
+  5. Backup data sebelum migrasi bulk.
 
 ## Langkah Berikutnya (saat build sukses)
 1. Unduh artifact APK dari Actions → `mylife-apk` (arm64-v8a).
