@@ -62,10 +62,11 @@ mylife/
 4. **Split ABI arm64-v8a** — `--split-per-abi --target-platform android-arm64` untuk rilis.
 5. **Scope aman** — jangan baca/tulis `~/.ssh/`, `~/.gnupg/`, `~/.config/opencode2/`.
 6. **Post-build otomatis (tanpa konfirmasi)** — setiap build sukses langsung: update baris `Build terakhir` + link `Build terkini` di HANDOVER, commit `docs: update latest build run id in HANDOVER.md`, push `main`, lalu unduh artifact `mylife-apk` ke `build/artifact-<RUN_ID>/`.
+7. **Pemantauan build manual** — Bos memantau status build sendiri. Agent **tidak** polling / menjalankan `gh run view` / `gh run watch` kecuali diminta. Alur post-build (poin 6) dijalankan setelah Bos mengabari build hijau atau memberi Run ID final.
 
 ## Perintah Rutin
 ```bash
-# Cek status build
+# Cek status build (dijalankan Bos, bukan agent)
 gh run view <RUN_ID>
 
 # Trigger build manual
