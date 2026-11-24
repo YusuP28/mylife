@@ -116,6 +116,12 @@ class DatabaseService {
     );
   }
 
+  /// Menghapus SEMUA catatan (untuk reset data).
+  Future<void> clearNotes() async {
+    final db = await database;
+    await db.delete(tableNotes);
+  }
+
   // === Finance API ===
 
   Future<List<FinanceTransaction>> getTransactions({
@@ -172,6 +178,12 @@ class DatabaseService {
       where: 'id = ?',
       whereArgs: <Object?>[id],
     );
+  }
+
+  /// Menghapus SEMUA transaksi (untuk reset data).
+  Future<void> clearTransactions() async {
+    final db = await database;
+    await db.delete(tableTransactions);
   }
 
   Future<double> calculateBalance({
@@ -238,5 +250,11 @@ class DatabaseService {
       where: 'id = ?',
       whereArgs: <Object?>[id],
     );
+  }
+
+  /// Menghapus SEMUA item brankas (untuk reset data).
+  Future<void> clearVaultItems() async {
+    final db = await database;
+    await db.delete(tableVaultItems);
   }
 }

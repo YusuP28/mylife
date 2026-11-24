@@ -181,4 +181,10 @@ class FinanceProvider extends ChangeNotifier {
     await _service.deleteTransaction(id);
     await loadTransactions();
   }
+
+  /// Menghapus SEMUA transaksi (reset data).
+  Future<void> clearAllTransactions() async {
+    await _service.clearTransactions();
+    await loadTransactions();
+  }
 }

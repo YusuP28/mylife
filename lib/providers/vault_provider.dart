@@ -113,4 +113,10 @@ class VaultProvider extends ChangeNotifier {
     await _service.deleteVaultItem(id);
     await loadItems();
   }
+
+  /// Menghapus SEMUA item brankas (reset data).
+  Future<void> clearAllItems() async {
+    await _service.clearVaultItems();
+    await loadItems();
+  }
 }

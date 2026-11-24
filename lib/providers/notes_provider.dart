@@ -79,4 +79,10 @@ class NotesProvider extends ChangeNotifier {
     await _service.deleteNote(id);
     await loadNotes();
   }
+
+  /// Menghapus SEMUA catatan (reset data).
+  Future<void> clearAllNotes() async {
+    await _service.clearNotes();
+    await loadNotes();
+  }
 }
