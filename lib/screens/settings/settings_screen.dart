@@ -78,9 +78,10 @@ class SettingsScreen extends StatelessWidget {
           const Divider(),
           _SecurityWarningCard(
             items: [
-              'Data sensitif (password, kredensial) disimpan sebagai teks biasa di SQLite lokal.',
-              'Enkripsi penuh belum tersedia. Jangan simpan data penting sebelum Tahap 4.',
-              'Backup eksternal harus mengakses file database yang sama.',
+              'Isi brankas dienkripsi AES-256-GCM. Kunci diturunkan dari password dengan PBKDF2-HMAC-SHA256 (210.000 iterasi).',
+              'Password tidak disimpan di perangkat dan tidak ada pemulihan. Lupa password berarti item brankas tidak bisa dibuka selamanya.',
+              'Saat brankas terbuka, isinya ada sebagai teks biasa di memori. Vault otomatis terkunci ketika aplikasi masuk background.',
+              'File vault_key.json hanya berisi salt dan verifier, bukan password. Jangan menghapusnya selama data brankas masih dibutuhkan.',
             ],
           ),
         ],
@@ -107,7 +108,7 @@ class SettingsScreen extends StatelessWidget {
               children: const <Widget>[
                 Text('• Catatan — dengan penanda format ringan'),
                 Text('• Keuangan — transaksi, saldo, laporan'),
-                Text('• Vault — penyimpanan kredensial (plaintext)'),
+                Text('• Vault — kredensial terenkripsi (AES-256-GCM)'),
                 Text('• Pengaturan — status data & info aplikasi'),
               ],
             ),
