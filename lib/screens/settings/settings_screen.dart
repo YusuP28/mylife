@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../models/note.dart';
-import '../models/vault_item.dart';
-import '../providers/finance_provider.dart';
-import '../providers/notes_provider.dart';
-import '../providers/vault_provider.dart';
+import '../../models/note.dart';
+import '../../models/vault_item.dart';
+import '../../providers/finance_provider.dart';
+import '../../providers/notes_provider.dart';
+import '../../providers/vault_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -146,9 +146,12 @@ class _SecurityWarningCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
+    return Container(
       color: Colors.amber.shade50,
-      border: Border.all(color: Colors.amber.shade300),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.amber.shade300),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
