@@ -1,18 +1,16 @@
-name: Build APK (Split ABI)
+name: Build APK (Mylife)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       build_type:
         description: 'Build type'
         required: true
-        default: 'release-split'
+        default: 'release'
         type: choice
         options:
-          - release-split
           - release
+          - release-split
           - debug
 
 jobs:
@@ -39,7 +37,7 @@ jobs:
         run: flutter pub get
 
       - name: Build APK (split ABI)
-        if: github.event.inputs.build_type == 'release-split' || github.event_name == 'push'
+        if: github.event.inputs.build_type == 'release-split'
         run: flutter build apk --split-per-abi --release --target-platform android-arm64
 
       - name: Build APK (universal release)

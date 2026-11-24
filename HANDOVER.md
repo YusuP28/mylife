@@ -13,7 +13,7 @@ Build **100% via GitHub Actions** (split ABI arm64-v8a). **Dilarang build lokal 
 | Modul Catatan: `Note` + `DatabaseService` + `NotesProvider` + list/FAB + pencarian | ✅ Done |
 | Android V2 embedding (MainActivity.kt, Manifest, styles, launch_background) | ✅ Done |
 | Gradle 9.5.0 / AGP 9.3.1 / Built-in Kotlin 2.4.10 / Java 17 | ✅ Done |
-| Build terakhir: Run ID **45372716335** (success, artifact `mylife-apk`) | ✅ Green |
+| Build terakhir: Run ID **45374620151** (success, artifact `mylife-apk`) | ✅ Green |
 
 ## Struktur Kunci
 ```
@@ -65,7 +65,7 @@ mylife/
 1. **No local build** — hanya `gh workflow run build.yml` atau push ke `main`.
 2. **Versi terbaru stabil** — Flutter, Kotlin, Gradle, AGP, paket Dart. Cek pub.dev/gradle.org/flutter.dev sebelum set versi.
 3. **Flutter 3.50 / Gradle 9.5.0 compliance** — `plugins {}` block **harus di baris pertama** file `.gradle`; AGP 9.3.1 butuh Gradle 9.5.0.
-4. **Split ABI arm64-v8a** — `--split-per-abi --target-platform android-arm64` untuk rilis.
+4. **Build hanya saat diminta** — jangan trigger build otomatis setelah commit/push. Default universal (`-f build_type=release`); split ABI (`-f build_type=release-split`, `--split-per-abi --target-platform android-arm64`) hanya bila diminta eksplisit.
 5. **Scope aman** — jangan baca/tulis `~/.ssh/`, `~/.gnupg/`, `~/.config/opencode2/`.
 6. **Post-build otomatis (tanpa konfirmasi)** — setiap build sukses langsung: update baris `Build terakhir` + link `Build terkini` di HANDOVER, commit `docs: update latest build run id in HANDOVER.md`, push `main`, lalu unduh artifact `mylife-apk` ke `build/artifact-<RUN_ID>/`.
 7. **Pemantauan build manual** — Bos memantau status build sendiri. Agent **tidak** polling / menjalankan `gh run view` / `gh run watch` kecuali diminta.
@@ -75,8 +75,10 @@ mylife/
 # Cek status build (dijalankan Bos, bukan agent)
 gh run view <RUN_ID>
 
-# Trigger build manual
-gh workflow run build.yml
+# Trigger build manual (hanya saat diminta; default universal)
+gh workflow run build.yml -f build_type=release
+# Split ABI arm64-v8a (hanya bila diminta eksplisit)
+gh workflow run build.yml -f build_type=release-split
 
 # Lihat log error
 gh run view <RUN_ID> --log-failed
@@ -147,4 +149,4 @@ cd ~/mylife && mkdir -p build/artifact-<RUN_ID> \
 ## Link Cepat
 - Repo: https://github.com/YusuP28/mylife
 - Actions: https://github.com/YusuP28/mylife/actions
-- Build terkini: https://github.com/YusuP28/mylife/actions/runs/45372716335
+- Build terkini: https://github.com/YusuP28/mylife/actions/runs/45374620151
