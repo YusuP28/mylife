@@ -132,7 +132,7 @@ class _VaultScreenState extends State<VaultScreen> {
         final item = provider.items[index];
         return _VaultItemTile(
           item: item,
-          isVisible: _visiblePasswords.contains(item.id),
+          onVisible: _visiblePasswords.contains(item.id),
           onToggleVisibility: () {
             final id = item.id;
             if (id != null) _toggleVisibility(id);
@@ -228,10 +228,10 @@ class _VaultItemTile extends StatelessWidget {
                       : theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              if (item.note.isNotEmpty) ...<Widget>[
+              if (item.notes.isNotEmpty) ...<Widget>[
                 const SizedBox(height: 8),
                 Text(
-                  item.note,
+                  item.notes,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(
