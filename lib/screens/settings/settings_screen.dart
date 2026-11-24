@@ -308,11 +308,19 @@ class _SecurityWarningCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final warningColor = theme.brightness == Brightness.dark
+        ? Colors.amber.shade200
+        : Colors.amber.shade900;
+    final borderColor = theme.brightness == Brightness.dark
+        ? Colors.amber.shade700
+        : Colors.amber.shade300;
 
     return Container(
-      color: Colors.amber.shade50,
+      color: theme.brightness == Brightness.dark
+          ? Colors.amber.shade900.withOpacity(0.15)
+          : Colors.amber.shade50,
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.amber.shade300),
+        border: Border.all(color: borderColor),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
@@ -323,11 +331,11 @@ class _SecurityWarningCard extends StatelessWidget {
             Row(
               children: <Widget>[
                 Icon(Icons.warning_amber_outlined,
-                    color: Colors.amber.shade700, size: 20),
+                    color: warningColor, size: 20),
                 const SizedBox(width: 8),
                 Text('Peringatan Keamanan',
                     style: theme.textTheme.titleSmall?.copyWith(
-                        color: Colors.amber.shade800, fontWeight: FontWeight.w600)),
+                        color: warningColor, fontWeight: FontWeight.w600)),
               ],
             ),
             const SizedBox(height: 12),
@@ -337,13 +345,12 @@ class _SecurityWarningCard extends StatelessWidget {
                 children: <Widget>[
                   const SizedBox(width: 4),
                   Icon(Icons.check_circle_outline,
-                      color: Colors.amber.shade700, size: 16),
+                      color: warningColor, size: 16),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       items[i],
-                      style:
-                          TextStyle(color: Colors.amber.shade800, height: 1.4),
+                      style: TextStyle(color: warningColor, height: 1.4),
                     ),
                   ),
                 ],

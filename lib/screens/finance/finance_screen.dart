@@ -330,79 +330,82 @@ class _FilterBar extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Row(
-        children: <Widget>[
-          _FilterMenu(
-            label: typeFilter == null
-                ? 'Semua tipe'
-                : typeFilter == FinanceTransactionType.income
-                    ? 'Pemasukan'
-                    : 'Pengeluaran',
-            active: typeFilter != null,
-            entries: const <PopupMenuEntry<String>>[
-              PopupMenuItem<String>(value: '', child: Text('Semua tipe')),
-              PopupMenuItem<String>(value: 'income', child: Text('Pemasukan')),
-              PopupMenuItem<String>(value: 'expense', child: Text('Pengeluaran')),
-            ],
-            onSelected: (value) {
-              if (value == 'income') {
-                onTypeChanged(FinanceTransactionType.income);
-              } else if (value == 'expense') {
-                onTypeChanged(FinanceTransactionType.expense);
-              } else {
-                onTypeChanged(null);
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-          _FilterMenu(
-            label: monthLabel,
-            active: monthFilter != null,
-            entries: <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(value: '', child: Text('Semua bulan')),
-              for (final month in months)
-                PopupMenuItem<String>(
-                  value: '${month.year}-${month.month}',
-                  child: Text(DateFormat('MMMM yyyy', 'id_ID').format(month)),
-                ),
-            ],
-            onSelected: (value) {
-              final parts = value.split('-');
-              if (parts.length != 2) {
-                onMonthChanged(null);
-                return;
-              }
-              onMonthChanged(
-                DateTime(int.parse(parts[0]), int.parse(parts[1])),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-          _FilterMenu(
-            label: categoryFilter ?? 'Semua kategori',
-            active: categoryFilter != null,
-            entries: <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
-                value: '',
-                child: Text('Semua kategori'),
-              ),
-              for (final category in categories)
-                PopupMenuItem<String>(
-                  value: category,
-                  child: Text(category),
-                ),
-            ],
-            onSelected: onCategoryChanged,
-          ),
-          if (hasActiveFilter) ...<Widget>[
-            const SizedBox(width: 8),
-            TextButton.icon(
-              onPressed: onReset,
-              icon: const Icon(Icons.filter_alt_off, size: 18),
-              label: const Text('Reset'),
+      child: Padding(
+        padding: const EdgeInsets.only(right: 16),
+        child: Row(
+          children: <Widget>[
+            _FilterMenu(
+              label: typeFilter == null
+                  ? 'Semua tipe'
+                  : typeFilter == FinanceTransactionType.income
+                      ? 'Pemasukan'
+                      : 'Pengeluaran',
+              active: typeFilter != null,
+              entries: const <PopupMenuEntry<String>>[
+                PopupMenuItem<String>(value: '', child: Text('Semua tipe')),
+                PopupMenuItem<String>(value: 'income', child: Text('Pemasukan')),
+                PopupMenuItem<String>(value: 'expense', child: Text('Pengeluaran')),
+              ],
+              onSelected: (value) {
+                if (value == 'income') {
+                  onTypeChanged(FinanceTransactionType.income);
+                } else if (value == 'expense') {
+                  onTypeChanged(FinanceTransactionType.expense);
+                } else {
+                  onTypeChanged(null);
+                }
+              },
             ),
+            const SizedBox(width: 8),
+            _FilterMenu(
+              label: monthLabel,
+              active: monthFilter != null,
+              entries: <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(value: '', child: Text('Semua bulan')),
+                for (final month in months)
+                  PopupMenuItem<String>(
+                    value: '${month.year}-${month.month}',
+                    child: Text(DateFormat('MMMM yyyy', 'id_ID').format(month)),
+                  ),
+              ],
+              onSelected: (value) {
+                final parts = value.split('-');
+                if (parts.length != 2) {
+                  onMonthChanged(null);
+                  return;
+                }
+                onMonthChanged(
+                  DateTime(int.parse(parts[0]), int.parse(parts[1])),
+                );
+              },
+            ),
+            const SizedBox(width: 8),
+            _FilterMenu(
+              label: categoryFilter ?? 'Semua kategori',
+              active: categoryFilter != null,
+              entries: <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: '',
+                  child: Text('Semua kategori'),
+                ),
+                for (final category in categories)
+                  PopupMenuItem<String>(
+                    value: category,
+                    child: Text(category),
+                  ),
+              ],
+              onSelected: onCategoryChanged,
+            ),
+            if (hasActiveFilter) ...<Widget>[
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: onReset,
+                icon: const Icon(Icons.filter_alt_off, size: 18),
+                label: const Text('Reset'),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
