@@ -6,6 +6,7 @@ import '../../models/note.dart';
 import '../../models/vault_item.dart';
 import '../../providers/finance_provider.dart';
 import '../../providers/notes_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../providers/vault_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -16,6 +17,7 @@ class SettingsScreen extends StatelessWidget {
     final notesProvider = context.watch<NotesProvider>();
     final financeProvider = context.watch<FinanceProvider>();
     final vaultProvider = context.watch<VaultProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -43,6 +45,8 @@ class SettingsScreen extends StatelessWidget {
             icon: Icons.vpn_key_outlined,
           ),
           const SizedBox(height: 24),
+          _ThemeSelector(current: themeProvider.mode, onSelect: themeProvider.select),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('Tentang Mylife'),
@@ -349,6 +353,43 @@ class _SecurityWarningCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ThemeSelector extends StatelessWidget {
+  const _ThemeSelector({required this.current, required this.onSelect});
+
+  final ThemeMode current;
+  final void Function(ThemeChoice) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<ThemeProvider>();
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text('Tema',
+            style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600)),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: provider.choices.map((choice) {
+            final selected = choice.toMode == current;
+            return FilterChip(
+              selected: selected,
+              onSelected: (_) => onSelect(choice),
+              label: Text(choice.label),
+              selectedColor: theme.colorScheme.primaryContainer,
+              checkmarkColor: theme.colorScheme.onPrimaryContainer,
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }

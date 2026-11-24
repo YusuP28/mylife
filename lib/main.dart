@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'providers/finance_provider.dart';
 import 'providers/notes_provider.dart';
+import 'providers/theme_provider.dart';
 import 'providers/vault_lock_provider.dart';
 import 'providers/vault_provider.dart';
 import 'screens/home_shell.dart';
@@ -26,32 +27,45 @@ class MylifeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<NotesProvider>(
-      create: (_) => NotesProvider()..loadNotes(),
-      child: ChangeNotifierProvider<FinanceProvider>(
-        create: (_) => FinanceProvider()..loadTransactions(),
-        child: ChangeNotifierProvider<VaultProvider>(
-          create: (_) => VaultProvider(),
-          child: ChangeNotifierProvider<VaultLockProvider>(
-            create: (_) => VaultLockProvider()..refreshStatus(),
-            child: MaterialApp(
-              title: 'Mylife',
-              debugShowCheckedModeBanner: false,
-              theme: AppTheme.light,
-              home: const HomeShell(),
-              builder: (context, child) {
-                final lock = context.read<VaultLockProvider>();
-                return Listener(
-                  behavior: HitTestBehavior.translucent,
-                  onPointerDown: (_) => lock.noteActivity(),
-                  onPointerMove: (_) => lock.noteActivity(),
-                  onPointerSignal: (_) => lock.noteActivity(),
-                  child: child ?? const SizedBox.shrink(),
-                );
-              },
-            ),
-          ),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<NotesProvider>(
+          create: (_) => NotesProvider()..loadNotes(),
         ),
+        ChangeNotifierProvider<FinanceProvider>(
+          create: (_) => FinanceProvider()..loadTransactions(),
+        ),
+        ChangeNotifierProvider<VaultProvider>(
+          create: (_) => VaultProvider(),
+        ),
+        ChangeNotifierProvider<VaultLockProvider>(
+          create: (_) => VaultLockProvider()..refreshStatus(),
+        ),
+        ChangeNotifierProvider<ThemeProvider>(
+          create: (_) => ThemeProvider()..load(),
+        ),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeModel, child) {
+          return MaterialApp(
+            title: 'Mylife',
+            debugShowCheckedModeBanner: false,
+            themeMode: themeModel.mode,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            home: const HomeShell(),
+            builder: (context, child) {
+              final lock = context.read<VaultLockProvider>();
+              return Listener(
+                behavior: HitTestBehavior.translucent,
+                onPointerDown: (_) => lock.noteActivity(),
+                onPointerMove: (_) => lock.noteActivity(),
+                onPointerSignal: (_) => lock.noteActivity(),
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
+          );
+        },
       ),
     );
   }
