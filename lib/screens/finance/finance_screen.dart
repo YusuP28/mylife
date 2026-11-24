@@ -14,15 +14,29 @@ class FinanceScreen extends StatefulWidget {
 }
 
 class _FinanceScreenState extends State<FinanceScreen> {
+  late final TextEditingController _searchController;
+
   @override
   void initState() {
     super.initState();
+    _searchController = TextEditingController();
     // Auto-load transaksi saat masuk ke layar
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<FinanceProvider>().loadTransactions();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _resetFilters() {
+    _searchController.clear();
+    context.read<FinanceProvider>().resetFilters();
   }
 
   @override
@@ -54,17 +68,54 @@ class _FinanceScreenState extends State<FinanceScreen> {
               error: provider.error!,
               onRetry: () => provider.loadTransactions(),
             ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: TextField(
+              controller: _searchController,
+              onChanged: provider.setQuery,
+              decoration: InputDecoration(
+                hintText: 'Cari transaksi...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Hapus pencarian',
+                        onPressed: () {
+                          _searchController.clear();
+                          provider.setQuery('');
+                        },
+                      ),
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ),
+          _FilterBar(
+            typeFilter: provider.typeFilter,
+            monthFilter: provider.monthFilter,
+            categoryFilter: provider.categoryFilter,
+            months: provider.months,
+            categories: provider.categories,
+            hasActiveFilter: provider.hasActiveFilter,
+            onTypeChanged: provider.setTypeFilter,
+            onMonthChanged: provider.setMonthFilter,
+            onCategoryChanged: provider.setCategoryFilter,
+            onReset: _resetFilters,
+          ),
           Expanded(
             child: provider.loading
                 ? const Center(child: CircularProgressIndicator())
                 : provider.transactions.isEmpty
                     ? _EmptyState(onAdd: () => _openEditor())
-                    : _TransactionList(
-                        transactions: provider.transactions,
-                        currency: currency,
-                        onEdit: _openEditor,
-                        onDelete: _confirmDelete,
-                      ),
+                    : provider.visibleTransactions.isEmpty
+                        ? _NoResultsState(onReset: _resetFilters)
+                        : _TransactionList(
+                            transactions: provider.visibleTransactions,
+                            currency: currency,
+                            onEdit: _openEditor,
+                            onDelete: _confirmDelete,
+                          ),
           ),
         ],
       ),
@@ -209,6 +260,208 @@ class _SummaryItem extends StatelessWidget {
               fontWeight: FontWeight.w600,
             )),
       ],
+    );
+  }
+}
+
+class _FilterBar extends StatelessWidget {
+  const _FilterBar({
+    required this.typeFilter,
+    required this.monthFilter,
+    required this.categoryFilter,
+    required this.months,
+    required this.categories,
+    required this.hasActiveFilter,
+    required this.onTypeChanged,
+    required this.onMonthChanged,
+    required this.onCategoryChanged,
+    required this.onReset,
+  });
+
+  final FinanceTransactionType? typeFilter;
+  final DateTime? monthFilter;
+  final String? categoryFilter;
+  final List<DateTime> months;
+  final List<String> categories;
+  final bool hasActiveFilter;
+  final ValueChanged<FinanceTransactionType?> onTypeChanged;
+  final ValueChanged<DateTime?> onMonthChanged;
+  final ValueChanged<String?> onCategoryChanged;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final monthLabel = monthFilter == null
+        ? 'Semua bulan'
+        : DateFormat('MMMM yyyy', 'id_ID').format(monthFilter!);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Row(
+        children: <Widget>[
+          _FilterMenu(
+            label: typeFilter == null
+                ? 'Semua tipe'
+                : typeFilter == FinanceTransactionType.income
+                    ? 'Pemasukan'
+                    : 'Pengeluaran',
+            active: typeFilter != null,
+            entries: const <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(value: '', child: Text('Semua tipe')),
+              PopupMenuItem<String>(value: 'income', child: Text('Pemasukan')),
+              PopupMenuItem<String>(value: 'expense', child: Text('Pengeluaran')),
+            ],
+            onSelected: (value) {
+              if (value == 'income') {
+                onTypeChanged(FinanceTransactionType.income);
+              } else if (value == 'expense') {
+                onTypeChanged(FinanceTransactionType.expense);
+              } else {
+                onTypeChanged(null);
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          _FilterMenu(
+            label: monthLabel,
+            active: monthFilter != null,
+            entries: <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(value: '', child: Text('Semua bulan')),
+              for (final month in months)
+                PopupMenuItem<String>(
+                  value: '${month.year}-${month.month}',
+                  child: Text(DateFormat('MMMM yyyy', 'id_ID').format(month)),
+                ),
+            ],
+            onSelected: (value) {
+              final parts = value.split('-');
+              if (parts.length != 2) {
+                onMonthChanged(null);
+                return;
+              }
+              onMonthChanged(
+                DateTime(int.parse(parts[0]), int.parse(parts[1])),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+          _FilterMenu(
+            label: categoryFilter ?? 'Semua kategori',
+            active: categoryFilter != null,
+            entries: <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: '',
+                child: Text('Semua kategori'),
+              ),
+              for (final category in categories)
+                PopupMenuItem<String>(
+                  value: category,
+                  child: Text(category),
+                ),
+            ],
+            onSelected: onCategoryChanged,
+          ),
+          if (hasActiveFilter) ...<Widget>[
+            const SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: onReset,
+              icon: const Icon(Icons.filter_alt_off, size: 18),
+              label: const Text('Reset'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterMenu extends StatelessWidget {
+  const _FilterMenu({
+    required this.label,
+    required this.active,
+    required this.entries,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool active;
+  final List<PopupMenuEntry<String>> entries;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final foreground = active
+        ? theme.colorScheme.onPrimaryContainer
+        : theme.colorScheme.onSurfaceVariant;
+
+    return PopupMenuButton<String>(
+      onSelected: onSelected,
+      itemBuilder: (_) => entries,
+      tooltip: label,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: active
+              ? theme.colorScheme.primaryContainer
+              : theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: active
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outlineVariant,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              label,
+              style: theme.textTheme.labelLarge?.copyWith(color: foreground),
+            ),
+            Icon(Icons.arrow_drop_down, size: 18, color: foreground),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoResultsState extends StatelessWidget {
+  const _NoResultsState({required this.onReset});
+
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(Icons.search_off,
+              size: 56, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(height: 12),
+          Text('Tidak ada transaksi yang cocok',
+              style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text(
+            'Coba kata kunci lain atau reset filter.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: onReset,
+            icon: const Icon(Icons.filter_alt_off),
+            label: const Text('Reset filter'),
+          ),
+        ],
+      ),
     );
   }
 }
