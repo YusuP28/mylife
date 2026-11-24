@@ -4,6 +4,8 @@ import 'package:sqflite/sqflite.dart';
 import '../models/finance_transaction.dart';
 import '../models/note.dart';
 import '../models/vault_item.dart';
+import 'vault_encryption_service.dart';
+import 'vault_row_codec.dart';
 
 class DatabaseService {
   DatabaseService._();
@@ -16,6 +18,17 @@ class DatabaseService {
   static const String tableNotes = 'notes';
   static const String tableTransactions = 'transactions';
   static const String tableVaultItems = 'vault_items';
+
+  /// Default [NoOpEncryption]: belum ada enkripsi sampai vault dibuka
+  /// (Tahap 4B-4 mengisi ini lewat [vaultEncryption]).
+  VaultEncryptionService _vaultEncryption = vaultEncryptionService;
+
+  VaultRowCodec get _vaultCodec => VaultRowCodec(_vaultEncryption);
+
+  /// Pasang cipher aktif. Dipanggil setelah kunci sesi tersedia.
+  set vaultEncryption(VaultEncryptionService service) {
+    _vaultEncryption = service;
+  }
 
   /// Dipakai di `onCreate` dan `onUpgrade` (aman dipanggil berulang).
   static const String _createVaultItemsSql =
@@ -225,22 +238,62 @@ class DatabaseService {
   Future<List<VaultItem>> getVaultItems() async {
     final db = await database;
     final rows = await db.query(tableVaultItems, orderBy: 'updated_at DESC');
-    return rows.map(VaultItem.fromMap).toList(growable: false);
+    final codec = _vaultCodec;
+    final items = <VaultItem>[];
+    for (final row in rows) {
+      items.add(VaultItem.fromMap(await codec.decryptRow(row)));
+    }
+    return List<VaultItem>.unmodifiable(items);
   }
 
   Future<int> insertVaultItem(VaultItem item) async {
     final db = await database;
-    return db.insert(tableVaultItems, item.toMap());
+    final values = await _vaultCodec.encryptRow(item.toMap());
+    return db.insert(tableVaultItems, values);
   }
 
   Future<int> updateVaultItem(VaultItem item) async {
     final db = await database;
     return db.update(
       tableVaultItems,
-      item.toMap(),
+      await _vaultCodec.encryptRow(item.toMap()),
       where: 'id = ?',
       whereArgs: <Object?>[item.id],
     );
+  }
+
+  /// Mengenkripsi baris lama yang masih plaintext, sekali jalan, dalam satu
+  /// transaksi. Tidak mengubah skema dan tidak menaikkan `_dbVersion`.
+  ///
+  /// Mengembalikan jumlah baris yang dimigrasi. `0` bila cipher masih NoOp.
+  Future<int> migrateVaultItems() async {
+    final codec = _vaultCodec;
+    if (!codec.encryptsData) return 0;
+
+    final db = await database;
+    var migrated = 0;
+
+    await db.transaction((txn) async {
+      final rows = await txn.query(tableVaultItems);
+      for (final row in rows) {
+        if (!codec.rowNeedsMigration(row)) continue;
+
+        final id = row['id'];
+        if (id is! int) continue;
+
+        final values = Map<String, Object?>.of(await codec.encryptRow(row))
+          ..remove('id');
+        await txn.update(
+          tableVaultItems,
+          values,
+          where: 'id = ?',
+          whereArgs: <Object?>[id],
+        );
+        migrated++;
+      }
+    });
+
+    return migrated;
   }
 
   Future<int> deleteVaultItem(int id) async {

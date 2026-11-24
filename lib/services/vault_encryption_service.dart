@@ -16,6 +16,9 @@ import 'package:cryptography/cryptography.dart';
 ///
 /// Belum dipakai `DatabaseService`; integrasi ada di Tahap 4B-3.
 abstract class VaultEncryptionService {
+  /// `false` untuk [NoOpEncryption]: tidak ada yang perlu dienkripsi/dimigrasi.
+  bool get encryptsData;
+
   Future<String> encrypt(String plaintext);
 
   Future<String> decrypt(String storedValue);
@@ -32,6 +35,9 @@ const String vaultEncryptionPrefix = 'enc:v1:';
 /// Dipertahankan sebagai default sampai `DatabaseService` diintegrasikan.
 class NoOpEncryption implements VaultEncryptionService {
   const NoOpEncryption();
+
+  @override
+  bool get encryptsData => false;
 
   @override
   bool isEncrypted(String value) => false;
@@ -61,6 +67,9 @@ class AesGcmEncryption implements VaultEncryptionService {
 
   final SecretKey _key;
   final AesGcm _algorithm;
+
+  @override
+  bool get encryptsData => true;
 
   @override
   bool isEncrypted(String value) => value.startsWith(vaultEncryptionPrefix);
