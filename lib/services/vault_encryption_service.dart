@@ -1,54 +1,132 @@
-/// Layanan enkripsi untuk item brankas Vault.
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:cryptography/cryptography.dart';
+
+/// Layanan enkripsi untuk field sensitif brankas Vault.
 ///
-/// **Catatan keamanan (Tahap 4A)**:
-/// File ini menyediakan abstraksi enkripsi tanpa mengubah skema database.
-/// Implementasi `NoOpEncryption` tidak mengubah data — hanya untuk migrasi keamanan.
+/// Kontrak (Tahap 4B-1):
+/// - Semua operasi kripto async karena `cryptography` async dan kunci bisa
+///   berasal dari sumber async (master password / Keystore).
+/// - `encrypt` menerima plaintext, mengembalikan string bertanda
+///   [vaultEncryptionPrefix] agar bisa dibedakan dari data lama.
+/// - `decrypt` menerima ciphertext bertanda tersebut. Nilai tanpa tanda
+///   dianggap data lama plaintext dan dikembalikan apa adanya (mode transisi).
+/// - String kosong tidak pernah dienkripsi: password boleh kosong.
 ///
-/// **Prasyarat untuk Tahap 4B (enkripsi produksi)**:
-/// 1. Tambah dependency `encrypt` atau `cryptography` di pubspec.yaml.
-/// 2. Implementasikan `VaultEncryptionService` dengan AES-256-GCM.
-/// 3. Tambahkan master password / kunci utama pengguna.
-/// 4. Naikkan `_dbVersion` ke 4 untuk migration kolom kunci (misal: `is_encrypted INTEGER`).
-/// 5. Backup data sebelum migrasi bulk.
-///
-/// **Field sensitif yang akan dienkripsi**:
-/// - `VaultItem.password` (wajib)
-/// - `VaultItem.notes` (opsional, tergantung kebijakan)
-///
-/// **Titik akses yang perlu di-audit**:
-/// - `VaultItem.fromMap()` — deserialisasi: password sudah plaintext atau terenkripsi.
-/// - `VaultItem.toMap()` — serialisasi: password harus dienkripsi sebelum disimpan.
-/// - `VaultProvider.addItem()` / `updateItem()` — harus enkripsi sebelum store.
-/// - `VaultProvider.loadItems()` — harus decrypt setelah ambil dari DB (bila Tahap 4B).
+/// Belum dipakai `DatabaseService`; integrasi ada di Tahap 4B-3.
 abstract class VaultEncryptionService {
-  /// Mengenkripsi string sensitif.
-  String encrypt(String plaintext);
+  Future<String> encrypt(String plaintext);
 
-  /// Mende-crypt string yang sudah dienkripsi.
-  String decrypt(String ciphertext);
+  Future<String> decrypt(String storedValue);
 
-  /// Mengubah plaintext menjadi bentuk yang aman untuk disimpan.
-  /// Untuk Tahap 4B: gunakan `encrypt()`. Untuk Tahap 4A: identity.
-  String prepareForStorage(String value) => encrypt(value);
-
-  /// Mengambil nilai yang aman untuk ditampilkan.
-  /// Untuk Tahap 4B: gunakan `decrypt()`. Untuk Tahap 4A: identity.
-  String getSecureValue(String storedValue) => decrypt(storedValue);
+  bool isEncrypted(String value);
 }
 
-/// Implementasi NoOp — tidak mengubah data.
+/// Penanda ciphertext versi 1. Base64 tidak pernah memuat `:`, jadi aman
+/// dipakai sebagai pembeda tanpa mengubah skema database.
+const String vaultEncryptionPrefix = 'enc:v1:';
+
+/// Implementasi sementara: tidak mengubah data (plaintext di SQLite).
 ///
-/// **Digunakan sampai Tahap 4B** ketika enkripsi resmi diaktifkan.
-/// Semua data tetap plaintext di SQLite.
+/// Dipertahankan sebagai default sampai `DatabaseService` diintegrasikan.
 class NoOpEncryption implements VaultEncryptionService {
   const NoOpEncryption();
 
   @override
-  String encrypt(String plaintext) => plaintext;
+  bool isEncrypted(String value) => false;
 
   @override
-  String decrypt(String ciphertext) => ciphertext;
+  Future<String> encrypt(String plaintext) async => plaintext;
+
+  @override
+  Future<String> decrypt(String storedValue) async => storedValue;
 }
 
-/// Singleton instance penggunaan default.
-const vaultEncryptionService = NoOpEncryption();
+/// AES-256-GCM dengan nonce 12 byte acak per operasi.
+///
+/// Format tersimpan: `enc:v1:<base64(nonce ‖ ciphertext ‖ mac)>`.
+class AesGcmEncryption implements VaultEncryptionService {
+  AesGcmEncryption(SecretKey key)
+      : _key = key,
+        _algorithm = AesGcm.with256bits();
+
+  /// Kunci dari byte mentah (32 byte untuk AES-256).
+  factory AesGcmEncryption.fromBytes(List<int> bytes) =>
+      AesGcmEncryption(SecretKeyData(bytes));
+
+  static const int nonceLength = 12;
+  static const int macLength = 16;
+  static const int keyLength = 32;
+
+  final SecretKey _key;
+  final AesGcm _algorithm;
+
+  @override
+  bool isEncrypted(String value) => value.startsWith(vaultEncryptionPrefix);
+
+  @override
+  Future<String> encrypt(String plaintext) async {
+    if (plaintext.isEmpty) return plaintext;
+    if (isEncrypted(plaintext)) {
+      throw ArgumentError.value(
+        plaintext,
+        'plaintext',
+        'Nilai sudah terenkripsi, jangan enkripsi dua kali',
+      );
+    }
+
+    final box = await _algorithm.encrypt(
+      utf8.encode(plaintext),
+      secretKey: _key,
+    );
+
+    final cipherLength = box.cipherText.length;
+    final payload = Uint8List(nonceLength + cipherLength + macLength)
+      ..setRange(0, nonceLength, box.nonce)
+      ..setRange(nonceLength, nonceLength + cipherLength, box.cipherText)
+      ..setRange(
+        nonceLength + cipherLength,
+        nonceLength + cipherLength + macLength,
+        box.mac.bytes,
+      );
+
+    return '$vaultEncryptionPrefix${base64Encode(payload)}';
+  }
+
+  @override
+  Future<String> decrypt(String storedValue) async {
+    if (storedValue.isEmpty) return storedValue;
+
+    if (storedValue.startsWith('enc:') && !isEncrypted(storedValue)) {
+      throw UnsupportedError(
+        'Versi enkripsi tidak dikenal: ${storedValue.split(':').take(2).join(':')}',
+      );
+    }
+
+    // Data lama (sebelum Tahap 4B) belum punya penanda: kembalikan apa adanya.
+    if (!isEncrypted(storedValue)) return storedValue;
+
+    final payload = base64Decode(
+      storedValue.substring(vaultEncryptionPrefix.length),
+    );
+    if (payload.length < nonceLength + macLength) {
+      throw const FormatException('Payload enkripsi terlalu pendek');
+    }
+
+    final nonce = payload.sublist(0, nonceLength);
+    final macStart = payload.length - macLength;
+    final cipherText = payload.sublist(nonceLength, macStart);
+    final mac = Mac(payload.sublist(macStart));
+
+    final clearBytes = await _algorithm.decrypt(
+      SecretBox(cipherText, nonce: nonce, mac: mac),
+      secretKey: _key,
+    );
+
+    return utf8.decode(clearBytes);
+  }
+}
+
+/// Singleton default. Ganti ke [AesGcmEncryption] saat integrasi database.
+const VaultEncryptionService vaultEncryptionService = NoOpEncryption();
