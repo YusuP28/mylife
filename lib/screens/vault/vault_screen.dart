@@ -86,6 +86,66 @@ class _VaultScreenState extends State<VaultScreen> {
     );
   }
 
+  Future<void> _openEnableQuickUnlock() async {
+    final password = await showDialog<String>(
+      context: context,
+      builder: (_) => const _QuickUnlockPasswordDialog(),
+    );
+    if (password == null || !mounted) return;
+
+    final lock = context.read<VaultLockProvider>();
+    final ok = await lock.enableQuickUnlock(password);
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Buka cepat aktif: kunci acak disimpan di Keystore'
+              : lock.error ?? 'Gagal mengaktifkan buka cepat',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _disableQuickUnlock() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Nonaktifkan buka cepat'),
+        content: const Text(
+          'Kunci perangkat akan dihapus. Data tetap terenkripsi dan bisa '
+          'dibuka dengan password brankas.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Nonaktifkan'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final lock = context.read<VaultLockProvider>();
+    final ok = await lock.disableQuickUnlock();
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Buka cepat dinonaktifkan'
+              : lock.error ?? 'Gagal menonaktifkan buka cepat',
+        ),
+      ),
+    );
+  }
+
   Future<void> _confirmDelete(VaultItem item) async {
     final id = item.id;
     if (id == null) return;
@@ -125,10 +185,12 @@ class _VaultScreenState extends State<VaultScreen> {
     if (!lock.isUnlocked) {
       return VaultLockScreen(
         hasPassword: lock.hasPassword,
+        hasQuickUnlock: lock.hasQuickUnlock,
         busy: lock.busy,
         error: lock.error,
         onCreate: (password) => _openVault(lock.createPassword(password)),
         onUnlock: (password) => _openVault(lock.unlock(password)),
+        onUnlockWithDevice: () => _openVault(lock.unlockWithDeviceKey()),
       );
     }
 
@@ -139,10 +201,29 @@ class _VaultScreenState extends State<VaultScreen> {
       appBar: AppBar(
         title: const Text('Vault'),
         actions: <Widget>[
-          IconButton(
-            onPressed: _openChangePassword,
-            tooltip: 'Ganti password',
-            icon: const Icon(Icons.password),
+          PopupMenuButton<String>(
+            tooltip: 'Opsi brankas',
+            onSelected: (value) {
+              if (value == 'change') _openChangePassword();
+              if (value == 'enable') _openEnableQuickUnlock();
+              if (value == 'disable') _disableQuickUnlock();
+            },
+            itemBuilder: (_) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'change',
+                child: Text('Ganti password'),
+              ),
+              if (lock.hasQuickUnlock)
+                const PopupMenuItem<String>(
+                  value: 'disable',
+                  child: Text('Nonaktifkan buka cepat'),
+                )
+              else
+                const PopupMenuItem<String>(
+                  value: 'enable',
+                  child: Text('Aktifkan buka cepat'),
+                ),
+            ],
           ),
         ],
       ),
@@ -885,6 +966,87 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                 )
               : const Icon(Icons.password),
           label: Text(_submitting ? 'Memproses...' : 'Ganti'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Dialog konfirmasi password sebelum mengaktifkan buka cepat (4C-A).
+class _QuickUnlockPasswordDialog extends StatefulWidget {
+  const _QuickUnlockPasswordDialog();
+
+  @override
+  State<_QuickUnlockPasswordDialog> createState() =>
+      _QuickUnlockPasswordDialogState();
+}
+
+class _QuickUnlockPasswordDialogState
+    extends State<_QuickUnlockPasswordDialog> {
+  final TextEditingController _passwordCtrl = TextEditingController();
+  bool _showPassword = false;
+
+  @override
+  void dispose() {
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final password = _passwordCtrl.text;
+    if (password.isEmpty) return;
+    Navigator.of(context).pop(password);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: const Text('Aktifkan buka cepat'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Kunci acak 32 byte disimpan di Keystore perangkat dan data brankas '
+            'dienkripsi ulang dengan kunci itu. Password tetap bisa dipakai '
+            'sebagai cadangan.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _passwordCtrl,
+            obscureText: !_showPassword,
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _submit(),
+            decoration: InputDecoration(
+              labelText: 'Password brankas',
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                onPressed: () {
+                  setState(() => _showPassword = !_showPassword);
+                },
+                icon: Icon(
+                  _showPassword ? Icons.visibility_off : Icons.visibility,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        FilledButton.icon(
+          onPressed: _submit,
+          icon: const Icon(Icons.fingerprint),
+          label: const Text('Aktifkan'),
         ),
       ],
     );

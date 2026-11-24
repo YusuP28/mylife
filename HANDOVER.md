@@ -135,10 +135,15 @@ cd ~/mylife && mkdir -p build/artifact-<RUN_ID> \
 - **Auto-lock (4B-4, selesai)**: `HomeShell` memakai `WidgetsBindingObserver`; `AppLifecycleState.paused`/`hidden` langsung mengunci vault dan mengosongkan plaintext di `VaultProvider`. Editor yang masih terbuka menampilkan banner "Vault terkunci" dan tombol simpan dimatikan (fail closed), bukan menyimpan plaintext.
 - **Idle timer (4B-5, selesai)**: `lib/services/idle_lock_watcher.dart` — lock setelah 5 menit tanpa aktivitas pointer/scroll. Timer dimiliki `VaultLockProvider` (hidup hanya saat vault terbuka); aktivitas dikirim dari `Listener` di `MaterialApp.builder`, jadi semua rute termasuk editor Vault ikut mereset timer. Batasan: mengetik di soft keyboard tidak menghasilkan pointer event, jadi tidak menunda idle.
 - **Ganti password (4B-6, selesai)**: `VaultLockProvider.changePassword()` — verifikasi password lama (`verifyPassword`), turunkan kunci baru (PBKDF2 210.000 + salt baru), tulis record sementara (`previous` = kunci lama), re-enkripsi semua baris via `DatabaseService.reencryptVaultItems()` dalam **satu transaksi**, lalu finalisasi record (hapus `previous`) dan pasang cipher baru. Gagal di tengah → transaksi rollback + record asal dipulihkan (`abortPasswordChange`). UI: ikon kunci di AppBar Vault → dialog 3 field; setelah sukses daftar dimuat ulang sebagai bukti dekripsi dengan kunci baru. `_dbVersion` tetap 3.
-- **Belum dikerjakan**:
-  1. `android:allowBackup` masih default `true`. Aman untuk skema master password (salt ikut ter-backup, password diingat pengguna). Wajib diubah ke `false` bila nanti pindah ke kunci Keystore (4C).
-  2. Layar pemulihan (tidak ada pemulihan password; hanya dokumentasi).
-- **Opsional Tahap 4C**: `flutter_secure_storage` 11.x (minSdk 23, cocok dengan proyek) untuk kunci acak di Keystore + biometrik; `local_auth` 3.x butuh `minSdk` 24 dan `FlutterFragmentActivity`. Keduanya dependency baru, belum disetujui.
+- **Buka cepat 4C-A (preview di working tree, belum di-commit, dependency belum disetujui)**:
+  - Dependency baru: `flutter_secure_storage ^10.3.1` (kompatibel Dart 3.7 / Flutter 3.50.0 di CI). `local_auth` tetap ditunda (butuh minSdk 24 + `FlutterFragmentActivity`), jadi 4C-A **belum** meminta biometrik: `AndroidOptions()` default (RSA-OAEP + AES-GCM, API 23+) hanya mengikat kunci ke Keystore perangkat. Gating biometrik menyusul di 4C-B.
+  - `lib/services/vault_secret_store.dart`: `VaultSecretStore` (interface) + `SecureVaultSecretStore`; entri `mylife.vault.device_key` berisi kunci data 32 byte.
+  - Record v2 di `vault_key.json`: `wrappedKey` = kunci data acak dibungkus kunci turunan password (salt/iterasi sama), `check` dibuat dengan kunci data sehingga bisa memverifikasi kunci perangkat.
+  - Aktifkan: verifikasi password → tulis record v2 + kunci Keystore (`stageDeviceKey`) → `reencryptVaultItems()` satu transaksi → pasang kunci baru (`commitDeviceKey`). Gagal → `abortDeviceKey` memulihkan record asal dan menghapus kunci Keystore.
+  - Migrasi terputus tetap aman: `candidatesWithPassword` mengembalikan kunci data lalu kunci turunan password; `VaultLockProvider` mem-probe isi database sebelum mengunci sesi, dan vault kosong wajib cocok dengan `check`.
+  - Ganti password pada record v2 hanya membungkus ulang kunci data (`rewrapPassword`) — tanpa re-enkripsi database. Nonaktifkan buka cepat = hapus entri Keystore; data tetap di kunci acak dan password tetap membuka.
+  - `AndroidManifest.xml`: `android:allowBackup="false"` (Keystore tidak bisa dipulihkan di perangkat lain). `_dbVersion` tetap 3.
+- **Belum dikerjakan**: layar pemulihan (tidak ada pemulihan password; hanya dokumentasi).
 - **Catatan performa**: PBKDF2 pure Dart bisa terasa lambat di HP kelas menengah; `cryptography_flutter` bisa mempercepat tanpa mengubah format data (butuh dependency tambahan, belum disetujui).
 
 ## Langkah Berikutnya (saat build sukses)

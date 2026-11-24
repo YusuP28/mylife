@@ -5,17 +5,23 @@ class VaultLockScreen extends StatefulWidget {
   const VaultLockScreen({
     super.key,
     required this.hasPassword,
+    required this.hasQuickUnlock,
     required this.busy,
     required this.error,
     required this.onCreate,
     required this.onUnlock,
+    required this.onUnlockWithDevice,
   });
 
   final bool hasPassword;
+
+  /// `true` bila kunci perangkat tersimpan (buka cepat 4C-A).
+  final bool hasQuickUnlock;
   final bool busy;
   final String? error;
   final Future<bool> Function(String password) onCreate;
   final Future<bool> Function(String password) onUnlock;
+  final Future<bool> Function() onUnlockWithDevice;
 
   @override
   State<VaultLockScreen> createState() => _VaultLockScreenState();
@@ -62,6 +68,12 @@ class _VaultLockScreenState extends State<VaultLockScreen> {
       _passwordCtrl.clear();
       _confirmCtrl.clear();
     }
+  }
+
+  Future<void> _unlockWithDevice() async {
+    if (widget.busy) return;
+    setState(() => _localError = null);
+    await widget.onUnlockWithDevice();
   }
 
   @override
@@ -162,6 +174,14 @@ class _VaultLockScreenState extends State<VaultLockScreen> {
                         : 'Buka',
               ),
             ),
+            if (!_isCreating && widget.hasQuickUnlock) ...<Widget>[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: widget.busy ? null : _unlockWithDevice,
+                icon: const Icon(Icons.fingerprint),
+                label: const Text('Buka cepat'),
+              ),
+            ],
             const SizedBox(height: 24),
             Container(
               padding: const EdgeInsets.all(12),
