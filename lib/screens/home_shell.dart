@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../providers/vault_lock_provider.dart';
 import '../providers/vault_provider.dart';
-import '../services/idle_lock_watcher.dart';
 import 'finance/finance_screen.dart';
 import 'notes/notes_screen.dart';
 import 'settings/settings_screen.dart';
@@ -17,11 +16,9 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
-  static const Duration _idleTimeout = Duration(minutes: 5);
-
   int _index = 0;
-  IdleLockWatcher? _idle;
   VaultLockProvider? _lock;
+  bool _wasUnlocked = false;
 
   static const List<Widget> _screens = <Widget>[
     NotesScreen(),
@@ -34,7 +31,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _idle = IdleLockWatcher(timeout: _idleTimeout, onIdle: _lockVault);
   }
 
   @override
@@ -42,42 +38,30 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     super.didChangeDependencies();
 
     final lock = context.read<VaultLockProvider>();
-    if (!identical(lock, _lock)) {
-      _lock?.removeListener(_syncIdleWatcher);
-      _lock = lock..addListener(_syncIdleWatcher);
-    }
-    _syncIdleWatcher();
+    if (identical(lock, _lock)) return;
+
+    _lock?.removeListener(_onLockChanged);
+    _lock = lock..addListener(_onLockChanged);
+    _wasUnlocked = lock.isUnlocked;
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _lock?.removeListener(_syncIdleWatcher);
-    _idle?.dispose();
+    _lock?.removeListener(_onLockChanged);
     super.dispose();
   }
 
-  /// Timer idle hanya hidup selama vault terbuka.
-  void _syncIdleWatcher() {
-    final idle = _idle;
-    if (idle == null) return;
-
-    if (_lock?.isUnlocked ?? false) {
-      if (!idle.isRunning) idle.start();
-    } else {
-      idle.stop();
-    }
-  }
-
-  void _lockVault() {
+  /// Plaintext di memori dibuang saat status berubah terbuka → terkunci,
+  /// termasuk saat lock dipicu timer idle di `VaultLockProvider`.
+  void _onLockChanged() {
     if (!mounted) return;
 
-    final lock = _lock;
-    if (lock == null || !lock.isUnlocked) return;
-
-    _idle?.stop();
-    lock.lock();
-    context.read<VaultProvider>().clearItems();
+    final unlocked = _lock?.isUnlocked ?? false;
+    if (_wasUnlocked && !unlocked) {
+      context.read<VaultProvider>().clearItems();
+    }
+    _wasUnlocked = unlocked;
   }
 
   @override
@@ -85,44 +69,40 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     if (state != AppLifecycleState.paused && state != AppLifecycleState.hidden) {
       return;
     }
-    _lockVault();
+
+    final lock = _lock;
+    if (lock != null && lock.isUnlocked) lock.lock();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      behavior: HitTestBehavior.translucent,
-      onPointerDown: (_) => _idle?.noteActivity(),
-      onPointerMove: (_) => _idle?.noteActivity(),
-      onPointerSignal: (_) => _idle?.noteActivity(),
-      child: Scaffold(
-        body: IndexedStack(index: _index, children: _screens),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _index,
-          onDestinationSelected: (value) => setState(() => _index = value),
-          destinations: const <NavigationDestination>[
-            NavigationDestination(
-              icon: Icon(Icons.sticky_note_2_outlined),
-              selectedIcon: Icon(Icons.sticky_note_2),
-              label: 'Catatan',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.account_balance_wallet_outlined),
-              selectedIcon: Icon(Icons.account_balance_wallet),
-              label: 'Keuangan',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.lock_outline),
-              selectedIcon: Icon(Icons.lock),
-              label: 'Vault',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.settings_outlined),
-              selectedIcon: Icon(Icons.settings),
-              label: 'Pengaturan',
-            ),
-          ],
-        ),
+    return Scaffold(
+      body: IndexedStack(index: _index, children: _screens),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (value) => setState(() => _index = value),
+        destinations: const <NavigationDestination>[
+          NavigationDestination(
+            icon: Icon(Icons.sticky_note_2_outlined),
+            selectedIcon: Icon(Icons.sticky_note_2),
+            label: 'Catatan',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet),
+            label: 'Keuangan',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.lock_outline),
+            selectedIcon: Icon(Icons.lock),
+            label: 'Vault',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Pengaturan',
+          ),
+        ],
       ),
     );
   }

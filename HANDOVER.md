@@ -129,11 +129,11 @@ cd ~/mylife && mkdir -p build/artifact-<RUN_ID> \
 - **`lib/providers/vault_lock_provider.dart` (4B-4, selesai)**:
   - Alur: `refreshStatus` → `createPassword`/`unlock` → pasang `AesGcmEncryption` ke `DatabaseService.vaultEncryption` → `migrateVaultItems()` → baru `isUnlocked = true`.
   - Migrasi gagal → cipher dikembalikan ke `LockedEncryption` + kunci dihapus (fail closed).
-  - `lock()` → `VaultKeyManager.lock()` + `LockedEncryption` + `VaultProvider.clearItems()`.
+  - `lock()` → hentikan timer idle + `VaultKeyManager.lock()` + `LockedEncryption`; `HomeShell` mendeteksi transisi terbuka → terkunci lalu memanggil `VaultProvider.clearItems()`.
 - **`lib/screens/vault/vault_lock_screen.dart` (4B-4, selesai)**:
   - Mode buat password (min 8 karakter + konfirmasi) dan mode buka; error dari provider ditampilkan; busy state saat PBKDF2/migrasi berjalan.
 - **Auto-lock (4B-4, selesai)**: `HomeShell` memakai `WidgetsBindingObserver`; `AppLifecycleState.paused`/`hidden` langsung mengunci vault dan mengosongkan plaintext di `VaultProvider`. Editor yang masih terbuka menampilkan banner "Vault terkunci" dan tombol simpan dimatikan (fail closed), bukan menyimpan plaintext.
-- **Idle timer (4B-5, selesai)**: `lib/services/idle_lock_watcher.dart` — lock setelah 5 menit tanpa aktivitas pointer/scroll; timer hanya hidup selama vault terbuka, di-reset oleh `Listener` di `HomeShell`. Batasan: mengetik di soft keyboard tidak menghasilkan pointer event, jadi tidak menunda idle.
+- **Idle timer (4B-5, selesai)**: `lib/services/idle_lock_watcher.dart` — lock setelah 5 menit tanpa aktivitas pointer/scroll. Timer dimiliki `VaultLockProvider` (hidup hanya saat vault terbuka); aktivitas dikirim dari `Listener` di `MaterialApp.builder`, jadi semua rute termasuk editor Vault ikut mereset timer. Batasan: mengetik di soft keyboard tidak menghasilkan pointer event, jadi tidak menunda idle.
 - **Belum dikerjakan**:
   1. `android:allowBackup` masih default `true`. Aman untuk skema master password (salt ikut ter-backup, password diingat pengguna). Wajib diubah ke `false` bila nanti pindah ke kunci Keystore (4C).
   2. Ganti password vault (butuh re-enkripsi massal) dan layar pemulihan.

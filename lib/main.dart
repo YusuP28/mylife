@@ -39,6 +39,16 @@ class MylifeApp extends StatelessWidget {
               debugShowCheckedModeBanner: false,
               theme: AppTheme.light,
               home: const HomeShell(),
+              builder: (context, child) {
+                final lock = context.read<VaultLockProvider>();
+                return Listener(
+                  behavior: HitTestBehavior.translucent,
+                  onPointerDown: (_) => lock.noteActivity(),
+                  onPointerMove: (_) => lock.noteActivity(),
+                  onPointerSignal: (_) => lock.noteActivity(),
+                  child: child ?? const SizedBox.shrink(),
+                );
+              },
             ),
           ),
         ),
