@@ -19,8 +19,8 @@ class VaultLockProvider extends ChangeNotifier {
     VaultKeyManager? keyManager,
     DatabaseService? database,
     this.idleTimeout = defaultIdleTimeout,
-  })  : _keyManager = keyManager ?? VaultKeyManager(),
-        _database = database ?? DatabaseService.instance {
+  }) : _keyManager = keyManager ?? VaultKeyManager(),
+       _database = database ?? DatabaseService.instance {
     _idle = IdleLockWatcher(timeout: idleTimeout, onIdle: lock);
   }
 
@@ -95,7 +95,8 @@ class VaultLockProvider extends ChangeNotifier {
       }
       _hasPassword = true;
       if (await _activateFirst(candidates)) return true;
-      _error = 'Password benar, tetapi data vault memakai kunci lain. '
+      _error =
+          'Password benar, tetapi data vault memakai kunci lain. '
           'Coba buka cepat.';
       return false;
     } catch (e) {
@@ -321,31 +322,43 @@ class VaultLockProvider extends ChangeNotifier {
 
   /// Mencoba kandidat berurutan; kandidat yang gagal dihapus oleh [_tryActivate].
   Future<bool> _activateFirst(List<VaultKeyCandidate> candidates) async {
+    VaultKeyCandidate? kept;
+
     for (var i = 0; i < candidates.length; i++) {
       if (!await _tryActivate(candidates[i])) continue;
 
-      var kept = candidates[i];
+      kept = candidates[i];
       // Migrasi 4C terputus: baris masih memakai kunci fallback. Pindahkan ke
       // kunci data di record supaya item baru tidak memakai kunci campur.
       if (i > 0 && candidates[i].record.isWrapped) {
         final target = candidates.first;
         try {
-          await _finishInterruptedMigration(from: candidates[i], target: target);
+          await _finishInterruptedMigration(
+            from: candidates[i],
+            target: target,
+          );
           kept = target;
         } catch (_) {
-          // Re-enkripsi di-rollback; vault tetap terbuka dengan kunci lama.
+          // Re-enkripsi di-rollback; vault tetap terbuka dengan fallback.
+          kept = candidates[i];
         }
       }
+      break;
+    }
+
+    if (kept == null) {
       for (final candidate in candidates) {
-        if (!identical(candidate, kept)) candidate.key.destroy();
+        candidate.key.destroy();
       }
-      return true;
+      return false;
     }
 
     for (final candidate in candidates) {
-      candidate.key.destroy();
+      if (!identical(candidate, kept)) {
+        candidate.key.destroy();
+      }
     }
-    return false;
+    return true;
   }
 
   Future<void> _finishInterruptedMigration({

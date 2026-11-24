@@ -46,12 +46,11 @@ class _MemorySecretStore implements VaultSecretStore {
 VaultKeyManager _manager(
   _MemoryKeyStore store, [
   _MemorySecretStore? secrets,
-]) =>
-    VaultKeyManager(
-      store: store,
-      secretStore: secrets ?? _MemorySecretStore(),
-      iterations: 1000,
-    );
+]) => VaultKeyManager(
+  store: store,
+  secretStore: secrets ?? _MemorySecretStore(),
+  iterations: 1000,
+);
 
 void main() {
   group('VaultKeyManager.createPassword', () {
@@ -215,35 +214,40 @@ void main() {
   });
 
   group('VaultKeyManager 4C-A kunci perangkat', () {
-    test('record v2 membungkus kunci acak dan password tetap membuka',
-        () async {
-      final store = _MemoryKeyStore();
-      final secrets = _MemorySecretStore();
-      final manager = _manager(store, secrets);
-      await manager.createPassword('password-lama');
+    test(
+      'record v2 membungkus kunci acak dan password tetap membuka',
+      () async {
+        final store = _MemoryKeyStore();
+        final secrets = _MemorySecretStore();
+        final manager = _manager(store, secrets);
+        await manager.createPassword('password-lama');
 
-      final change = await manager.prepareDeviceKey('password-lama');
-      expect(change, isNotNull);
-      expect(change!.record.isWrapped, isTrue);
-      expect(change.record.wrappedKey, startsWith(vaultEncryptionPrefix));
-      expect(await change.key.extractBytes(), hasLength(VaultKeyManager.keyLength));
-      final dataKey = await change.key.extractBytes();
+        final change = await manager.prepareDeviceKey('password-lama');
+        expect(change, isNotNull);
+        expect(change!.record.isWrapped, isTrue);
+        expect(change.record.wrappedKey, startsWith(vaultEncryptionPrefix));
+        expect(
+          await change.key.extractBytes(),
+          hasLength(VaultKeyManager.keyLength),
+        );
+        final dataKey = await change.key.extractBytes();
 
-      await manager.stageDeviceKey(change);
-      manager.commitDeviceKey(change);
+        await manager.stageDeviceKey(change);
+        manager.commitDeviceKey(change);
 
-      expect(store.record!.isWrapped, isTrue);
-      expect(await manager.hasDeviceKey(), isTrue);
-      final storedDevice = await manager.readDeviceKey();
-      expect(await storedDevice!.extractBytes(), dataKey);
-      storedDevice.destroy();
+        expect(store.record!.isWrapped, isTrue);
+        expect(await manager.hasDeviceKey(), isTrue);
+        final storedDevice = await manager.readDeviceKey();
+        expect(await storedDevice!.extractBytes(), dataKey);
+        storedDevice.destroy();
 
-      manager.lock();
-      final reopened = _manager(store, secrets);
-      expect(await reopened.hasWrappedRecord(), isTrue);
-      expect(await reopened.unlock('password-lama'), isTrue);
-      expect(await reopened.requireKey.extractBytes(), dataKey);
-    });
+        manager.lock();
+        final reopened = _manager(store, secrets);
+        expect(await reopened.hasWrappedRecord(), isTrue);
+        expect(await reopened.unlock('password-lama'), isTrue);
+        expect(await reopened.requireKey.extractBytes(), dataKey);
+      },
+    );
 
     test('prepareDeviceKey dengan password salah mengembalikan null', () async {
       final store = _MemoryKeyStore();
@@ -255,29 +259,31 @@ void main() {
       expect(await manager.hasDeviceKey(), isFalse);
     });
 
-    test('rewrapPassword mengganti password tanpa mengganti kunci data',
-        () async {
-      final store = _MemoryKeyStore();
-      final secrets = _MemorySecretStore();
-      final manager = _manager(store, secrets);
-      await manager.createPassword('lama');
+    test(
+      'rewrapPassword mengganti password tanpa mengganti kunci data',
+      () async {
+        final store = _MemoryKeyStore();
+        final secrets = _MemorySecretStore();
+        final manager = _manager(store, secrets);
+        await manager.createPassword('lama');
 
-      final change = await manager.prepareDeviceKey('lama');
-      await manager.stageDeviceKey(change!);
-      manager.commitDeviceKey(change);
-      final dataKey = await change.key.extractBytes();
+        final change = await manager.prepareDeviceKey('lama');
+        await manager.stageDeviceKey(change!);
+        manager.commitDeviceKey(change);
+        final dataKey = await change.key.extractBytes();
 
-      await manager.rewrapPassword(
-        currentPassword: 'lama',
-        newPassword: 'baru',
-      );
-      manager.lock();
+        await manager.rewrapPassword(
+          currentPassword: 'lama',
+          newPassword: 'baru',
+        );
+        manager.lock();
 
-      expect(await _manager(store, secrets).unlock('lama'), isFalse);
-      final reopened = _manager(store, secrets);
-      expect(await reopened.unlock('baru'), isTrue);
-      expect(await reopened.requireKey.extractBytes(), dataKey);
-    });
+        expect(await _manager(store, secrets).unlock('lama'), isFalse);
+        final reopened = _manager(store, secrets);
+        expect(await reopened.unlock('baru'), isTrue);
+        expect(await reopened.requireKey.extractBytes(), dataKey);
+      },
+    );
 
     test('abortDeviceKey memulihkan record v1 dan menghapus kunci', () async {
       final store = _MemoryKeyStore();
@@ -352,6 +358,72 @@ void main() {
 
       expect(decoded.previous!.iterations, 2000);
       expect(decoded.previous!.check, 'enc:v1:old');
+    });
+  });
+
+  group('VaultKeyManager 4C-A migrasi terputus', () {
+    test('password fallback saat migrasi tidak tuntas di database', () async {
+      final store = _MemoryKeyStore();
+      final secrets = _MemorySecretStore();
+      final manager = _manager(store, secrets);
+      await manager.createPassword('password-lama');
+
+      final change = await manager.prepareDeviceKey('password-lama');
+      expect(change, isNotNull);
+      await manager.stageDeviceKey(change!);
+      // commitDeviceKey TIDAK dipanggil → state "migrasi terputus"
+
+      manager.lock();
+      final reopened = _manager(store, secrets);
+
+      // Fallback password harus tetap bisa unlock
+      expect(await reopened.unlock('password-lama'), isTrue);
+      expect(reopened.isUnlocked, isTrue);
+
+      // Kunci yang aktif adalah dataKey, bukan kek
+      final activeKey = await reopened.requireKey.extractBytes();
+      expect(activeKey, equals(await change.key.extractBytes()));
+    });
+
+    test('abortDeviceKey memulihkan state sebelum commit', () async {
+      final store = _MemoryKeyStore();
+      final secrets = _MemorySecretStore();
+      final manager = _manager(store, secrets);
+      await manager.createPassword('password-lama');
+
+      final originalRecord = store.record;
+      final change = await manager.prepareDeviceKey('password-lama');
+      await manager.stageDeviceKey(change!);
+
+      // Simulasikan abort sebelum commit
+      await manager.abortDeviceKey(change);
+
+      // Record v1 kembali
+      expect(store.record!.isWrapped, isFalse);
+      expect(await manager.hasDeviceKey(), isFalse);
+      // Password lama tetap valid
+      expect(await manager.verifyPassword('password-lama'), isTrue);
+    });
+
+    test('kandidat urutan: dataKey prioritas lebih tinggi dari kek', () async {
+      final store = _MemoryKeyStore();
+      final secrets = _MemorySecretStore();
+      final manager = _manager(store, secrets);
+      await manager.createPassword('password-lama');
+
+      final change = await manager.prepareDeviceKey('password-lama');
+      await manager.stageDeviceKey(change!);
+      manager.commitDeviceKey(change);
+
+      final dataKeyBytes = await change.key.extractBytes();
+
+      manager.lock();
+      final reopened = _manager(store, secrets);
+      expect(await reopened.unlock('password-lama'), isTrue);
+
+      // Kunci yang aktif adalah dataKey, bukan kek
+      final activeKey = await reopened.requireKey.extractBytes();
+      expect(activeKey, equals(dataKeyBytes));
     });
   });
 }
