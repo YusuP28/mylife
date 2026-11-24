@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/finance_transaction.dart';
 import '../models/note.dart';
+import '../models/vault_item.dart';
 
 class DatabaseService {
   DatabaseService._();
@@ -10,10 +11,23 @@ class DatabaseService {
   static final DatabaseService instance = DatabaseService._();
 
   static const String _dbName = 'mylife.db';
-  static const int _dbVersion = 2;
+  static const int _dbVersion = 3;
 
   static const String tableNotes = 'notes';
   static const String tableTransactions = 'transactions';
+  static const String tableVaultItems = 'vault_items';
+
+  /// Dipakai di `onCreate` dan `onUpgrade` (aman dipanggil berulang).
+  static const String _createVaultItemsSql =
+      'CREATE TABLE IF NOT EXISTS $tableVaultItems ('
+      'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+      'title TEXT NOT NULL, '
+      'username TEXT NOT NULL DEFAULT \'\', '
+      'password TEXT NOT NULL DEFAULT \'\', '
+      'url TEXT NOT NULL DEFAULT \'\', '
+      'notes TEXT NOT NULL DEFAULT \'\', '
+      'created_at INTEGER NOT NULL, '
+      'updated_at INTEGER NOT NULL)';
 
   Database? _database;
 
@@ -45,6 +59,7 @@ class DatabaseService {
           'created_at INTEGER NOT NULL, '
           'updated_at INTEGER NOT NULL)',
         );
+        await db.execute(_createVaultItemsSql);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -59,6 +74,9 @@ class DatabaseService {
             'created_at INTEGER NOT NULL, '
             'updated_at INTEGER NOT NULL)',
           );
+        }
+        if (oldVersion < 3) {
+          await db.execute(_createVaultItemsSql);
         }
       },
     );
@@ -188,5 +206,37 @@ class DatabaseService {
     final income = (incomeResult.first['total'] as int).toDouble();
     final expense = (expenseResult.first['total'] as int).toDouble();
     return income - expense;
+  }
+
+  // === Vault API ===
+
+  Future<List<VaultItem>> getVaultItems() async {
+    final db = await database;
+    final rows = await db.query(tableVaultItems, orderBy: 'updated_at DESC');
+    return rows.map(VaultItem.fromMap).toList(growable: false);
+  }
+
+  Future<int> insertVaultItem(VaultItem item) async {
+    final db = await database;
+    return db.insert(tableVaultItems, item.toMap());
+  }
+
+  Future<int> updateVaultItem(VaultItem item) async {
+    final db = await database;
+    return db.update(
+      tableVaultItems,
+      item.toMap(),
+      where: 'id = ?',
+      whereArgs: <Object?>[item.id],
+    );
+  }
+
+  Future<int> deleteVaultItem(int id) async {
+    final db = await database;
+    return db.delete(
+      tableVaultItems,
+      where: 'id = ?',
+      whereArgs: <Object?>[id],
+    );
   }
 }
