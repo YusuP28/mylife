@@ -18,15 +18,24 @@ class PreferencesService {
       final f = await _file();
       if (!await f.exists()) return <String, String>{};
       final raw = await f.readAsString();
-      return Map<String, String>.from(jsonDecode(raw) as Map<String, dynamic>);
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return Map<String, String>.from(decoded);
     } catch (_) {
+      // Fallback: file korup atau JSON tidak valid — kembalikan kosong.
       return <String, String>{};
     }
   }
 
   Future<void> _save(Map<String, String> prefs) async {
     final f = await _file();
-    await f.writeAsString(jsonEncode(prefs));
+    final tmp = File('${f.path}.tmp');
+    try {
+      await tmp.writeAsString(jsonEncode(prefs));
+      await tmp.rename(f.path);
+    } catch (_) {
+      // Jika rename gagal (mis. disk penuh), hapus file sementara.
+      await tmp.delete().catchError((_) {});
+    }
   }
 
   Future<String?> getString(String key) async {

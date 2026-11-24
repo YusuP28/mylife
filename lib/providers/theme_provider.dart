@@ -52,14 +52,14 @@ class ThemeProvider extends ChangeNotifier {
 }
 
 enum ThemeChoice {
-  system('Sistem'),
-  light('Terang'),
-  dark('Gelap');
+  system('Sistem', 'system'),
+  light('Terang', 'light'),
+  dark('Gelap', 'dark');
 
-  const ThemeChoice(this.label);
+  const ThemeChoice(this.label, this.name);
 
   final String label;
-  String get name => runtimeType.toString().split('.').last;
+  final String name;
 
   ThemeMode get toMode {
     switch (this) {
