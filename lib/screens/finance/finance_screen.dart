@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/finance_transaction.dart';
 import '../../providers/finance_provider.dart';
+import 'finance_editor_screen.dart';
 
 class FinanceScreen extends StatefulWidget {
   const FinanceScreen({super.key});
@@ -27,7 +28,6 @@ class _FinanceScreenState extends State<FinanceScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
-    final theme = Theme.of(context);
     final currency = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp',
@@ -36,6 +36,11 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Keuangan')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openEditor(),
+        tooltip: 'Tambah transaksi',
+        child: const Icon(Icons.add),
+      ),
       body: Column(
         children: <Widget>[
           _SummaryCard(
@@ -53,15 +58,65 @@ class _FinanceScreenState extends State<FinanceScreen> {
             child: provider.loading
                 ? const Center(child: CircularProgressIndicator())
                 : provider.transactions.isEmpty
-                    ? const _EmptyState()
+                    ? _EmptyState(onAdd: () => _openEditor())
                     : _TransactionList(
                         transactions: provider.transactions,
                         currency: currency,
+                        onEdit: _openEditor,
+                        onDelete: _confirmDelete,
                       ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _openEditor([FinanceTransaction? transaction]) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => FinanceEditorScreen(transaction: transaction),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(FinanceTransaction tx) async {
+    final id = tx.id;
+    if (id == null) return;
+
+    final provider = context.read<FinanceProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Hapus transaksi'),
+        content: Text(
+          'Hapus transaksi '
+          '"${tx.category.isEmpty ? 'Tanpa kategori' : tx.category}"?',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await provider.deleteTransaction(id);
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal menghapus transaksi: $e')),
+      );
+    }
   }
 }
 
@@ -162,22 +217,29 @@ class _TransactionList extends StatelessWidget {
   const _TransactionList({
     required this.transactions,
     required this.currency,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   final List<FinanceTransaction> transactions;
   final NumberFormat currency;
+  final ValueChanged<FinanceTransaction> onEdit;
+  final ValueChanged<FinanceTransaction> onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
       itemCount: transactions.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final tx = transactions[index];
-        return _TransactionTile(tx: tx, currency: currency);
+        return _TransactionTile(
+          tx: tx,
+          currency: currency,
+          onTap: () => onEdit(tx),
+          onDelete: () => onDelete(tx),
+        );
       },
     );
   }
@@ -187,10 +249,14 @@ class _TransactionTile extends StatelessWidget {
   const _TransactionTile({
     required this.tx,
     required this.currency,
+    required this.onTap,
+    required this.onDelete,
   });
 
   final FinanceTransaction tx;
   final NumberFormat currency;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -203,33 +269,43 @@ class _TransactionTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          // Tahap 3: buka editor transaksi
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tekan tombol + untuk menambah transaksi.'),
-            ),
-          );
-        },
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  Text(
-                    tx.category.isEmpty ? 'Tanpa kategori' : tx.category,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  Icon(
+                    isIncome
+                        ? Icons.arrow_downward
+                        : Icons.arrow_upward,
+                    size: 18,
+                    color: amountColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      tx.category.isEmpty ? 'Tanpa kategori' : tx.category,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   Text(
-                    currency.format(tx.amount),
+                    (isIncome ? '+ ' : '- ') + currency.format(tx.amount),
                     style: TextStyle(
                       color: amountColor,
                       fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: onDelete,
+                    tooltip: 'Hapus transaksi',
+                    icon: Icon(
+                      Icons.delete_outline,
+                      color: theme.colorScheme.error,
                     ),
                   ),
                 ],
@@ -294,7 +370,9 @@ class _ErrorState extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({required this.onAdd});
+
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -319,14 +397,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
-            onPressed: () {
-              // Tahap 3: buka editor transaksi
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Fitur tambah transaksi akan tersedia.'),
-                ),
-              );
-            },
+            onPressed: onAdd,
             icon: const Icon(Icons.add),
             label: const Text('Tambah transaksi'),
           ),
