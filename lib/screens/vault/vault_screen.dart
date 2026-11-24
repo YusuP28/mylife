@@ -578,7 +578,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: _saving ? null : _save,
-              icon: const Icon(Icons.save_outline),
+              icon: const Icon(Icons.save),
               label: Text(_saving ? 'Menyimpan...' : 'Simpan'),
             ),
           ],
