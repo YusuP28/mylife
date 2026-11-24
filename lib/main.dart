@@ -4,13 +4,20 @@ import 'package:provider/provider.dart';
 
 import 'providers/finance_provider.dart';
 import 'providers/notes_provider.dart';
+import 'providers/vault_lock_provider.dart';
 import 'providers/vault_provider.dart';
 import 'screens/home_shell.dart';
+import 'services/database_service.dart';
+import 'services/vault_encryption_service.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID');
+
+  // Vault mulai terkunci: tidak ada operasi database yang menulis plaintext.
+  DatabaseService.instance.vaultEncryption = const LockedEncryption();
+
   runApp(const MylifeApp());
 }
 
@@ -24,12 +31,15 @@ class MylifeApp extends StatelessWidget {
       child: ChangeNotifierProvider<FinanceProvider>(
         create: (_) => FinanceProvider()..loadTransactions(),
         child: ChangeNotifierProvider<VaultProvider>(
-          create: (_) => VaultProvider()..loadItems(),
-          child: MaterialApp(
-            title: 'Mylife',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.light,
-            home: const HomeShell(),
+          create: (_) => VaultProvider(),
+          child: ChangeNotifierProvider<VaultLockProvider>(
+            create: (_) => VaultLockProvider()..refreshStatus(),
+            child: MaterialApp(
+              title: 'Mylife',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.light,
+              home: const HomeShell(),
+            ),
           ),
         ),
       ),

@@ -114,6 +114,14 @@ class VaultProvider extends ChangeNotifier {
     await loadItems();
   }
 
+  /// Mengosongkan plaintext dari memori. Dipanggil saat vault terkunci.
+  void clearItems() {
+    _items = <VaultItem>[];
+    _error = null;
+    _searchQuery = '';
+    notifyListeners();
+  }
+
   /// Menghapus SEMUA item brankas (reset data).
   Future<void> clearAllItems() async {
     await _service.clearVaultItems();

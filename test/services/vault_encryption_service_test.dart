@@ -79,4 +79,25 @@ void main() {
       expect(noop.isEncrypted('teks'), isFalse);
     });
   });
+
+  group('LockedEncryption', () {
+    test('semua operasi gagal tertutup saat terkunci', () async {
+      const locked = LockedEncryption();
+
+      expect(locked.encryptsData, isTrue);
+      expect(locked.isEncrypted('enc:v1:AAAA'), isTrue);
+      await expectLater(
+        locked.encrypt('apa saja'),
+        throwsA(isA<StateError>()),
+      );
+      await expectLater(
+        locked.decrypt('enc:v1:AAAA'),
+        throwsA(isA<StateError>()),
+      );
+      await expectLater(
+        locked.decrypt('plaintext lama'),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
 }

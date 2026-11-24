@@ -137,5 +137,28 @@ class AesGcmEncryption implements VaultEncryptionService {
   }
 }
 
+/// Cipher saat vault terkunci.
+///
+/// Semua operasi gagal keras: tidak pernah menulis plaintext dan tidak pernah
+/// membocorkan ciphertext ke UI. Dipasang ulang ke `AesGcmEncryption` setelah
+/// unlock berhasil.
+class LockedEncryption implements VaultEncryptionService {
+  const LockedEncryption();
+
+  @override
+  bool get encryptsData => true;
+
+  @override
+  bool isEncrypted(String value) => value.startsWith(vaultEncryptionPrefix);
+
+  @override
+  Future<String> encrypt(String plaintext) async =>
+      throw StateError('Vault terkunci: buka dengan password');
+
+  @override
+  Future<String> decrypt(String storedValue) async =>
+      throw StateError('Vault terkunci: buka dengan password');
+}
+
 /// Singleton default. Ganti ke [AesGcmEncryption] saat integrasi database.
 const VaultEncryptionService vaultEncryptionService = NoOpEncryption();

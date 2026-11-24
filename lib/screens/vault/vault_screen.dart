@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/vault_item.dart';
+import '../../providers/vault_lock_provider.dart';
 import '../../providers/vault_provider.dart';
+import 'vault_lock_screen.dart';
 
 class VaultScreen extends StatefulWidget {
   const VaultScreen({super.key});
@@ -22,10 +24,29 @@ class _VaultScreenState extends State<VaultScreen> {
     super.initState();
     _searchController = TextEditingController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && context.read<VaultLockProvider>().isUnlocked) {
         context.read<VaultProvider>().loadItems();
       }
     });
+  }
+
+  /// Dipanggil setelah buat password atau unlock berhasil.
+  Future<bool> _openVault(Future<bool> action) async {
+    final ok = await action;
+    if (!ok || !mounted) return ok;
+
+    _visiblePasswords.clear();
+    _searchController.clear();
+    await context.read<VaultProvider>().loadItems();
+    if (!mounted) return ok;
+
+    final migrated = context.read<VaultLockProvider>().migratedRows;
+    if (migrated > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$migrated item lama dienkripsi')),
+      );
+    }
+    return ok;
   }
 
   @override
@@ -83,6 +104,17 @@ class _VaultScreenState extends State<VaultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lock = context.watch<VaultLockProvider>();
+    if (!lock.isUnlocked) {
+      return VaultLockScreen(
+        hasPassword: lock.hasPassword,
+        busy: lock.busy,
+        error: lock.error,
+        onCreate: (password) => _openVault(lock.createPassword(password)),
+        onUnlock: (password) => _openVault(lock.unlock(password)),
+      );
+    }
+
     final provider = context.watch<VaultProvider>();
     final theme = Theme.of(context);
 

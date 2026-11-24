@@ -108,27 +108,34 @@ cd ~/mylife && mkdir -p build/artifact-<RUN_ID> \
 - Icon sementara memakai `@android:drawable/sym_def_app_icon` (placeholder sampai aset ikon asli dibuat).
 - `setup-java@v4` di workflow **sebelum** `flutter-action` (Java 17 Temurin).
 
-## Keamanan Vault (Tahap 4A audit → 4B-1/4B-2 fondasi)
-- **Field sensitif yang akan dienkripsi**: `VaultItem.password` (wajib), `VaultItem.notes` (opsional).
-- **Titik akses yang harus di-audit**:
-  - `VaultItem.fromMap()` / `toMap()` — deserialisasi/serialisasi.
-  - `DatabaseService.getVaultItems/insertVaultItem/updateVaultItem` — batas database tempat enkripsi dipasang (4B-3).
-  - `VaultProvider.addItem/updateItem/loadItems` dan UI Vault — tetap memakai plaintext di memori, tidak diubah.
+## Keamanan Vault (Tahap 4A audit → 4B selesai)
+- **Field sensitif yang dienkripsi**: `VaultItem.password`, `VaultItem.notes`.
+- **Batas enkripsi**: hanya `DatabaseService` (`getVaultItems`, `insertVaultItem`, `updateVaultItem`). `VaultItem`, `VaultProvider`, dan UI tetap memakai plaintext di memori.
 - **`lib/services/vault_encryption_service.dart` (4B-1, selesai)**:
-  - `VaultEncryptionService` async: `Future<String> encrypt`, `Future<String> decrypt`, `bool isEncrypted`.
+  - `VaultEncryptionService` async: `encrypt`, `decrypt`, `isEncrypted`, `encryptsData`.
   - `AesGcmEncryption` — AES-256-GCM, nonce 12 byte acak per operasi, format `enc:v1:<base64(nonce‖ciphertext‖mac)>`.
-  - Plaintext lama tanpa prefix dikembalikan apa adanya (jalur transisi); prefix versi lain ditolak; string kosong tidak dienkripsi.
-  - `vaultEncryptionService` masih `NoOpEncryption` (default) sampai 4B-3.
+  - Plaintext lama tanpa prefix lolos apa adanya (transisi); prefix versi lain ditolak; string kosong tidak dienkripsi.
+  - `LockedEncryption` (4B-4) — semua operasi `StateError`, dipakai saat vault terkunci supaya tidak pernah menulis plaintext atau membocorkan ciphertext.
+  - `NoOpEncryption` tetap ada sebagai default library, tapi aplikasi selalu memasang `LockedEncryption` saat start.
 - **`lib/services/vault_key_manager.dart` (4B-2, selesai)**:
-  - `VaultKeyManager` — PBKDF2-HMAC-SHA256 (default 210.000 iterasi, 32 byte), salt acak 16 byte, kunci sesi hanya di memori (`SecretKeyData.destroy()` saat `lock()`).
-  - `VaultKeyRecord` + `FileVaultKeyStore` — sidecar `vault_key.json` di direktori dokumen (sebelah `mylife.db`), isi: versi, kdf, iterasi, salt, dan verifier `enc:v1:...` untuk mendeteksi password salah. **Tidak menyimpan password/kunci.**
-  - Verifier salah → `unlock` mengembalikan `false` tanpa membocorkan alasan; file rusak/versi tak dikenal → `FormatException`, salt tidak pernah dibuat ulang diam-diam.
-  - Belum terhubung ke UI/`DatabaseService`; belum ada auto-lock saat app ke background.
-- **Prasyarat Tahap 4B-3 (integrasi)**:
-  1. `DatabaseService` memakai `AesGcmEncryption` untuk kolom `password`/`notes`, model tetap plaintext di memori.
-  2. Migrasi baris lama tanpa prefix: enkripsi ulang dalam transaksi, `_dbVersion` tetap 3.
-  3. `android:allowBackup="false"` + data extraction rules.
-- **Opsional Tahap 4C**: `flutter_secure_storage` (butuh `minSdk` 24, saat ini 23) untuk menyimpan kunci acak di Keystore + biometrik, pengganti master password.
+  - `VaultKeyManager` — PBKDF2-HMAC-SHA256 (210.000 iterasi, 32 byte), salt acak 16 byte, kunci sesi hanya di memori (`SecretKeyData.destroy()` saat `lock()`).
+  - `VaultKeyRecord` + `FileVaultKeyStore` — sidecar `vault_key.json` di direktori dokumen, isi: versi, kdf, iterasi, salt, verifier `enc:v1:...`. **Tidak menyimpan password/kunci.**
+  - Password salah → `unlock` `false`; file rusak/versi tak dikenal → `FormatException`; salt tidak pernah dibuat ulang diam-diam.
+- **`lib/services/vault_row_codec.dart` (4B-3, selesai)**:
+  - Hanya `password` dan `notes` yang dienkripsi, idempoten, field kosong dibiarkan.
+  - `migrateVaultItems()` di `DatabaseService`: satu transaksi, hanya baris yang masih plaintext, rollback penuh bila gagal. `_dbVersion` tetap **3**, tidak ada kolom baru.
+- **`lib/providers/vault_lock_provider.dart` (4B-4, selesai)**:
+  - Alur: `refreshStatus` → `createPassword`/`unlock` → pasang `AesGcmEncryption` ke `DatabaseService.vaultEncryption` → `migrateVaultItems()` → baru `isUnlocked = true`.
+  - Migrasi gagal → cipher dikembalikan ke `LockedEncryption` + kunci dihapus (fail closed).
+  - `lock()` → `VaultKeyManager.lock()` + `LockedEncryption` + `VaultProvider.clearItems()`.
+- **`lib/screens/vault/vault_lock_screen.dart` (4B-4, selesai)**:
+  - Mode buat password (min 8 karakter + konfirmasi) dan mode buka; error dari provider ditampilkan; busy state saat PBKDF2/migrasi berjalan.
+- **Auto-lock (4B-4, selesai)**: `HomeShell` memakai `WidgetsBindingObserver`; `AppLifecycleState.paused`/`hidden` langsung mengunci vault dan mengosongkan plaintext di `VaultProvider`. Catatan: editor yang masih terbuka saat app ke background akan gagal menyimpan (fail closed), bukan menyimpan plaintext.
+- **Belum dikerjakan**:
+  1. `android:allowBackup` masih default `true`. Aman untuk skema master password (salt ikut ter-backup, password diingat pengguna). Wajib diubah ke `false` bila nanti pindah ke kunci Keystore (4C).
+  2. Auto-lock berbasis idle timer (sekarang hanya lifecycle background).
+  3. Ganti password vault (butuh re-enkripsi massal) dan layar pemulihan.
+- **Opsional Tahap 4C**: `flutter_secure_storage` (butuh `minSdk` 24, saat ini 23) untuk kunci acak di Keystore + biometrik, pengganti master password.
 - **Catatan performa**: PBKDF2 pure Dart bisa terasa lambat di HP kelas menengah; `cryptography_flutter` bisa mempercepat tanpa mengubah format data (butuh dependency tambahan, belum disetujui).
 
 ## Langkah Berikutnya (saat build sukses)
