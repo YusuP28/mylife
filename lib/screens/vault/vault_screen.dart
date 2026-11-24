@@ -18,6 +18,7 @@ class VaultScreen extends StatefulWidget {
 class _VaultScreenState extends State<VaultScreen> {
   late final TextEditingController _searchController;
   final Map<int, bool> _visiblePasswords = {};
+  bool _showGrid = false;
 
   @override
   void initState() {
@@ -42,9 +43,9 @@ class _VaultScreenState extends State<VaultScreen> {
 
     final migrated = context.read<VaultLockProvider>().migratedRows;
     if (migrated > 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$migrated item lama dienkripsi')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$migrated item lama dienkripsi')));
     }
     return ok;
   }
@@ -63,9 +64,7 @@ class _VaultScreenState extends State<VaultScreen> {
 
   void _openEditor([VaultItem? item]) {
     Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => VaultEditorScreen(item: item),
-      ),
+      MaterialPageRoute<void>(builder: (_) => VaultEditorScreen(item: item)),
     );
   }
 
@@ -154,7 +153,9 @@ class _VaultScreenState extends State<VaultScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Hapus brankas'),
-        content: Text('Hapus "${item.title}"? Tindakan ini tidak bisa dibatalkan.'),
+        content: Text(
+          'Hapus "${item.title}"? Tindakan ini tidak bisa dibatalkan.',
+        ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -173,9 +174,8 @@ class _VaultScreenState extends State<VaultScreen> {
     try {
       await context.read<VaultProvider>().deleteItem(id);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menghapus: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal menghapus: $e')));
     }
   }
 
@@ -201,6 +201,11 @@ class _VaultScreenState extends State<VaultScreen> {
       appBar: AppBar(
         title: const Text('Vault'),
         actions: <Widget>[
+          IconButton(
+            icon: Icon(_showGrid ? Icons.view_list : Icons.grid_view),
+            tooltip: _showGrid ? 'Tampilan daftar' : 'Tampilan grid',
+            onPressed: () => setState(() => _showGrid = !_showGrid),
+          ),
           PopupMenuButton<String>(
             tooltip: 'Opsi brankas',
             onSelected: (value) {
@@ -241,14 +246,18 @@ class _VaultScreenState extends State<VaultScreen> {
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: <Widget>[
-                  Icon(Icons.error_outline,
-                      color: theme.colorScheme.error, size: 20),
+                  Icon(
+                    Icons.error_outline,
+                    color: theme.colorScheme.error,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       provider.error!,
-                      style:
-                          TextStyle(color: theme.colorScheme.onErrorContainer),
+                      style: TextStyle(
+                        color: theme.colorScheme.onErrorContainer,
+                      ),
                     ),
                   ),
                   TextButton(
@@ -295,38 +304,37 @@ class _VaultScreenState extends State<VaultScreen> {
             child: provider.loading
                 ? const Center(child: CircularProgressIndicator())
                 : provider.visibleItems.isEmpty
-                    ? _EmptyState(onAdd: () => _openEditor())
-                    : ListView.separated(
-                        padding:
-                            const EdgeInsets.fromLTRB(16, 16, 16, 88),
-                        itemCount: provider.visibleItems.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final item = provider.visibleItems[index];
-                          return _VaultItemTile(
-                            item: item,
-                            onEdit: () => _openEditor(item),
-                            onDelete: () => _confirmDelete(item),
-                            isVisible:
-                                _visiblePasswords[item.id ?? -1] ?? false,
-                            onToggleVisibility: () {
-                              final id = item.id;
-                              if (id != null) _togglePasswordVisibility(id);
-                            },
-                            onCopy: () {
-                              final pw = item.password;
-                              if (pw.isEmpty) return;
-                              Clipboard.setData(ClipboardData(text: pw));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content:
-                                        Text('Password disalin ke papan klip')),
-                              );
-                            },
+                ? _EmptyState(onAdd: () => _openEditor())
+                : _showGrid
+                ? _buildGridView(provider.visibleItems)
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
+                    itemCount: provider.visibleItems.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final item = provider.visibleItems[index];
+                      return _VaultItemTile(
+                        item: item,
+                        onEdit: () => _openEditor(item),
+                        onDelete: () => _confirmDelete(item),
+                        isVisible: _visiblePasswords[item.id ?? -1] ?? false,
+                        onToggleVisibility: () {
+                          final id = item.id;
+                          if (id != null) _togglePasswordVisibility(id);
+                        },
+                        onCopy: () {
+                          final pw = item.password;
+                          if (pw.isEmpty) return;
+                          Clipboard.setData(ClipboardData(text: pw));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Password disalin ke papan klip'),
+                            ),
                           );
                         },
-                      ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -348,11 +356,16 @@ class _NoResultsSearch extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(Icons.search_off,
-              size: 56, color: theme.colorScheme.onSurfaceVariant),
+          Icon(
+            Icons.search_off,
+            size: 56,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(height: 12),
-          Text('Tidak ada hasil untuk "$query"',
-              style: theme.textTheme.titleMedium),
+          Text(
+            'Tidak ada hasil untuk "$query"',
+            style: theme.textTheme.titleMedium,
+          ),
           const SizedBox(height: 8),
           FilledButton.icon(
             onPressed: onClear,
@@ -378,11 +391,13 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(Icons.vpn_key_outlined,
-              size: 64, color: theme.colorScheme.primary),
+          Icon(
+            Icons.vpn_key_outlined,
+            size: 64,
+            color: theme.colorScheme.primary,
+          ),
           const SizedBox(height: 16),
-          Text('Belum ada item brankas',
-              style: theme.textTheme.titleMedium),
+          Text('Belum ada item brankas', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(
             'Tekan tombol + untuk menambah data sensitif pertama.',
@@ -401,6 +416,38 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Grid view 3 kolom untuk item vault.
+Widget _buildGridView(List<VaultItem> items) {
+  return GridView.builder(
+    padding: const EdgeInsets.all(12),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 3,
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+    ),
+    itemCount: items.length,
+    itemBuilder: (context, index) {
+      final item = items[index];
+      final isVisible = _visiblePasswords[item.id ?? -1] ?? false;
+      return _GridItemTile(
+        item: item,
+        isVisible: isVisible,
+        onTap: () => _openEditor(item),
+        onDelete: () => _confirmDelete(item),
+        onToggle: () => _togglePasswordVisibility(item.id ?? -1),
+        onCopy: () {
+          final pw = item.password;
+          if (pw.isEmpty) return;
+          Clipboard.setData(ClipboardData(text: pw));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Password disalin ke papan klip')),
+          );
+        },
+      );
+    },
+  );
 }
 
 class _VaultItemTile extends StatelessWidget {
@@ -425,7 +472,7 @@ class _VaultItemTile extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Material(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -459,7 +506,12 @@ class _VaultItemTile extends StatelessWidget {
                       ],
                     ),
                   ),
-                  IconButton(onPressed: onToggleVisibility, icon: Icon(isVisible ? Icons.visibility_off : Icons.visibility)),
+                  IconButton(
+                    onPressed: onToggleVisibility,
+                    icon: Icon(
+                      isVisible ? Icons.visibility_off : Icons.visibility,
+                    ),
+                  ),
                   IconButton(
                     onPressed: onCopy,
                     icon: const Icon(Icons.copy),
@@ -484,7 +536,7 @@ class _VaultItemTile extends StatelessWidget {
                 isVisible
                     ? item.password
                     : '•' *
-                        (item.password.isNotEmpty ? item.password.length : 8),
+                          (item.password.isNotEmpty ? item.password.length : 8),
                 style: TextStyle(
                   fontFamily: 'monospace',
                   fontSize: 14,
@@ -534,6 +586,113 @@ class VaultEditorScreen extends StatefulWidget {
   State<VaultEditorScreen> createState() => _VaultEditorScreenState();
 }
 
+/// Grid tile untuk item vault (3 kolom).
+class _GridItemTile extends StatelessWidget {
+  const _GridItemTile({
+    required this.item,
+    required this.isVisible,
+    required this.onTap,
+    required this.onDelete,
+    required this.onToggle,
+    required this.onCopy,
+  });
+
+  final VaultItem item;
+  final bool isVisible;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+  final VoidCallback onToggle;
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(Icons.vpn_key, size: 24, color: theme.colorScheme.primary),
+              const SizedBox(height: 4),
+              Text(
+                item.title.isEmpty ? 'Tanpa judul' : item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (item.username.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 2),
+                Text(
+                  item.username,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              const Spacer(),
+              SelectableText(
+                isVisible
+                    ? item.password
+                    : '•' *
+                          (item.password.isNotEmpty ? item.password.length : 4),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 10,
+                  color: isVisible
+                      ? theme.colorScheme.onSurface
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: <Widget>[
+                  IconButton(
+                    icon: Icon(
+                      isVisible ? Icons.visibility_off : Icons.visibility,
+                      size: 16,
+                    ),
+                    onPressed: onToggle,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy, size: 16),
+                    onPressed: onCopy,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    color: theme.colorScheme.error,
+                    onPressed: onDelete,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _VaultEditorScreenState extends State<VaultEditorScreen> {
   late final TextEditingController _titleCtrl;
   late final TextEditingController _usernameCtrl;
@@ -579,9 +738,9 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
 
     final title = _titleCtrl.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Judul tidak boleh kosong')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Judul tidak boleh kosong')));
       return;
     }
 
@@ -618,9 +777,8 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal menyimpan: $e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -654,7 +812,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                    : const Icon(Icons.check),
+                : const Icon(Icons.check),
           ),
         ],
       ),
@@ -663,9 +821,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
           padding: const EdgeInsets.all(16),
           children: <Widget>[
             if (locked)
-              _VaultLockedBanner(
-                onBack: () => Navigator.of(context).pop(),
-              ),
+              _VaultLockedBanner(onBack: () => Navigator.of(context).pop()),
             TextField(
               controller: _titleCtrl,
               enabled: !locked,
@@ -699,9 +855,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
                         setState(() => _showPassword = !_showPassword);
                       },
                       icon: Icon(
-                        _showPassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                        _showPassword ? Icons.visibility_off : Icons.visibility,
                       ),
                     ),
                     IconButton(
@@ -745,6 +899,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
     );
   }
 }
+
 /// Ditampilkan di editor ketika auto-lock terjadi saat layar ini masih terbuka.
 ///
 /// Data yang sudah diketik tidak disimpan: menyimpan saat terkunci akan gagal
@@ -943,17 +1098,16 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
             ),
             if (_error != null) ...<Widget>[
               const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: TextStyle(color: theme.colorScheme.error),
-              ),
+              Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
             ],
           ],
         ),
       ),
       actions: <Widget>[
         TextButton(
-          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+          onPressed: _submitting
+              ? null
+              : () => Navigator.of(context).pop(false),
           child: const Text('Batal'),
         ),
         FilledButton.icon(

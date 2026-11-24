@@ -15,6 +15,7 @@ class NotesScreen extends StatefulWidget {
 
 class _NotesScreenState extends State<NotesScreen> {
   final TextEditingController _searchController = TextEditingController();
+  bool _showGrid = false;
 
   @override
   void dispose() {
@@ -24,9 +25,7 @@ class _NotesScreenState extends State<NotesScreen> {
 
   Future<void> _openEditor([Note? note]) async {
     await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => NoteEditorScreen(note: note),
-      ),
+      MaterialPageRoute<void>(builder: (_) => NoteEditorScreen(note: note)),
     );
   }
 
@@ -64,7 +63,16 @@ class _NotesScreenState extends State<NotesScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Catatan')),
+      appBar: AppBar(
+        title: const Text('Catatan'),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(_showGrid ? Icons.view_list : Icons.grid_view),
+            tooltip: _showGrid ? 'Tampilan daftar' : 'Tampilan grid',
+            onPressed: () => setState(() => _showGrid = !_showGrid),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openEditor(),
         tooltip: 'Tambah catatan',
@@ -105,9 +113,7 @@ class _NotesScreenState extends State<NotesScreen> {
               ),
             ),
           ),
-          Expanded(
-            child: _buildBody(state, theme),
-          ),
+          Expanded(child: _buildBody(state, theme)),
         ],
       ),
     );
@@ -124,6 +130,26 @@ class _NotesScreenState extends State<NotesScreen> {
         return _NoResults(query: state.query.trim());
       }
       return _EmptyState(onAdd: () => _openEditor());
+    }
+
+    if (_showGrid) {
+      return GridView.builder(
+        padding: const EdgeInsets.all(12),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+        ),
+        itemCount: notes.length,
+        itemBuilder: (context, index) {
+          final note = notes[index];
+          return _NoteTile(
+            note: note,
+            onTap: () => _openEditor(note),
+            onDelete: () => _confirmDelete(note),
+          );
+        },
+      );
     }
 
     return ListView.separated(
@@ -183,7 +209,7 @@ class _NoteTile extends StatelessWidget {
     final preview = _cleanPreview(note.body);
 
     return Material(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,

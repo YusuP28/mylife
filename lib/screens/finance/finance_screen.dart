@@ -15,6 +15,7 @@ class FinanceScreen extends StatefulWidget {
 
 class _FinanceScreenState extends State<FinanceScreen> {
   late final TextEditingController _searchController;
+  bool _showGrid = false;
 
   @override
   void initState() {
@@ -51,11 +52,21 @@ class _FinanceScreenState extends State<FinanceScreen> {
     final visible = provider.visibleSummary;
     final totalIncome = filtered ? visible.income : provider.totalIncome;
     final totalExpense = filtered ? visible.expense : provider.totalExpense;
-    final balance =
-        filtered ? (totalIncome - totalExpense).toDouble() : provider.balance;
+    final balance = filtered
+        ? (totalIncome - totalExpense).toDouble()
+        : provider.balance;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Keuangan')),
+      appBar: AppBar(
+        title: const Text('Keuangan'),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(_showGrid ? Icons.view_list : Icons.grid_view),
+            tooltip: _showGrid ? 'Tampilan daftar' : 'Tampilan grid',
+            onPressed: () => setState(() => _showGrid = !_showGrid),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openEditor(),
         tooltip: 'Tambah transaksi',
@@ -116,15 +127,17 @@ class _FinanceScreenState extends State<FinanceScreen> {
             child: provider.loading
                 ? const Center(child: CircularProgressIndicator())
                 : provider.transactions.isEmpty
-                    ? _EmptyState(onAdd: () => _openEditor())
-                    : provider.visibleTransactions.isEmpty
-                        ? _NoResultsState(onReset: _resetFilters)
-                        : _TransactionList(
-                            transactions: provider.visibleTransactions,
-                            currency: currency,
-                            onEdit: _openEditor,
-                            onDelete: _confirmDelete,
-                          ),
+                ? _EmptyState(onAdd: () => _openEditor())
+                : provider.visibleTransactions.isEmpty
+                ? _NoResultsState(onReset: _resetFilters)
+                : _showGrid
+                ? _buildGridListView(provider.visibleTransactions, currency)
+                : _TransactionList(
+                    transactions: provider.visibleTransactions,
+                    currency: currency,
+                    onEdit: _openEditor,
+                    onDelete: _confirmDelete,
+                  ),
           ),
         ],
       ),
@@ -281,16 +294,16 @@ class _SummaryItem extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                )),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
         const SizedBox(height: 4),
-        Text(value,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w600,
-            )),
+        Text(
+          value,
+          style: TextStyle(color: color, fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
@@ -338,13 +351,19 @@ class _FilterBar extends StatelessWidget {
               label: typeFilter == null
                   ? 'Semua tipe'
                   : typeFilter == FinanceTransactionType.income
-                      ? 'Pemasukan'
-                      : 'Pengeluaran',
+                  ? 'Pemasukan'
+                  : 'Pengeluaran',
               active: typeFilter != null,
               entries: const <PopupMenuEntry<String>>[
                 PopupMenuItem<String>(value: '', child: Text('Semua tipe')),
-                PopupMenuItem<String>(value: 'income', child: Text('Pemasukan')),
-                PopupMenuItem<String>(value: 'expense', child: Text('Pengeluaran')),
+                PopupMenuItem<String>(
+                  value: 'income',
+                  child: Text('Pemasukan'),
+                ),
+                PopupMenuItem<String>(
+                  value: 'expense',
+                  child: Text('Pengeluaran'),
+                ),
               ],
               onSelected: (value) {
                 if (value == 'income') {
@@ -361,7 +380,10 @@ class _FilterBar extends StatelessWidget {
               label: monthLabel,
               active: monthFilter != null,
               entries: <PopupMenuEntry<String>>[
-                const PopupMenuItem<String>(value: '', child: Text('Semua bulan')),
+                const PopupMenuItem<String>(
+                  value: '',
+                  child: Text('Semua bulan'),
+                ),
                 for (final month in months)
                   PopupMenuItem<String>(
                     value: '${month.year}-${month.month}',
@@ -389,10 +411,7 @@ class _FilterBar extends StatelessWidget {
                   child: Text('Semua kategori'),
                 ),
                 for (final category in categories)
-                  PopupMenuItem<String>(
-                    value: category,
-                    child: Text(category),
-                  ),
+                  PopupMenuItem<String>(value: category, child: Text(category)),
               ],
               onSelected: onCategoryChanged,
             ),
@@ -476,11 +495,16 @@ class _NoResultsState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(Icons.search_off,
-              size: 56, color: theme.colorScheme.onSurfaceVariant),
+          Icon(
+            Icons.search_off,
+            size: 56,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(height: 12),
-          Text('Tidak ada transaksi yang cocok',
-              style: theme.textTheme.titleMedium),
+          Text(
+            'Tidak ada transaksi yang cocok',
+            style: theme.textTheme.titleMedium,
+          ),
           const SizedBox(height: 8),
           Text(
             'Coba kata kunci lain atau reset filter.',
@@ -533,6 +557,26 @@ class _TransactionList extends StatelessWidget {
   }
 }
 
+/// Grid view 3 kolom untuk transaksi keuangan.
+Widget _buildGridListView(
+  List<FinanceTransaction> transactions,
+  NumberFormat currency,
+) {
+  return GridView.builder(
+    padding: const EdgeInsets.all(12),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 3,
+      mainAxisSpacing: 8,
+      crossAxisSpacing: 8,
+    ),
+    itemCount: transactions.length,
+    itemBuilder: (context, index) {
+      final tx = transactions[index];
+      return _GridTransactionTile(tx: tx, currency: currency);
+    },
+  );
+}
+
 class _TransactionTile extends StatelessWidget {
   const _TransactionTile({
     required this.tx,
@@ -553,7 +597,7 @@ class _TransactionTile extends StatelessWidget {
     final amountColor = isIncome ? Colors.green[700] : Colors.red[700];
 
     return Material(
-      color: Colors.white,
+      color: theme.colorScheme.surface,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -566,9 +610,7 @@ class _TransactionTile extends StatelessWidget {
               Row(
                 children: <Widget>[
                   Icon(
-                    isIncome
-                        ? Icons.arrow_downward
-                        : Icons.arrow_upward,
+                    isIncome ? Icons.arrow_downward : Icons.arrow_upward,
                     size: 18,
                     color: amountColor,
                   ),
@@ -641,8 +683,7 @@ class _ErrorState extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       child: Row(
         children: <Widget>[
-          Icon(Icons.error_outline,
-              color: theme.colorScheme.error, size: 20),
+          Icon(Icons.error_outline, color: theme.colorScheme.error, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -670,11 +711,13 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(Icons.account_balance_wallet_outlined,
-              size: 64, color: theme.colorScheme.primary),
+          Icon(
+            Icons.account_balance_wallet_outlined,
+            size: 64,
+            color: theme.colorScheme.primary,
+          ),
           const SizedBox(height: 16),
-          Text('Belum ada transaksi',
-              style: theme.textTheme.titleMedium),
+          Text('Belum ada transaksi', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(
             'Tekan tombol + untuk menambah transaksi keuangan.',
@@ -690,6 +733,64 @@ class _EmptyState extends StatelessWidget {
             label: const Text('Tambah transaksi'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Grid tile untuk transaksi keuangan (3 kolom).
+class _GridTransactionTile extends StatelessWidget {
+  const _GridTransactionTile({required this.tx, required this.currency});
+
+  final FinanceTransaction tx;
+  final NumberFormat currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isIncome = tx.isIncome;
+    final amountColor = isIncome ? Colors.green[700] : Colors.red[700];
+
+    return Material(
+      color: theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {},
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                isIncome ? Icons.arrow_downward : Icons.arrow_upward,
+                size: 20,
+                color: amountColor,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                tx.category.isEmpty ? 'Tanpa kategori' : tx.category,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                (isIncome ? '+ ' : '- ') + currency.format(tx.amount),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: amountColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
