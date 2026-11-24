@@ -69,6 +69,23 @@ class _VaultScreenState extends State<VaultScreen> {
     );
   }
 
+  Future<void> _openChangePassword() async {
+    final changed = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _ChangePasswordDialog(),
+    );
+    if (changed != true || !mounted) return;
+
+    // Muat ulang dari database: bukti bahwa semua baris benar-benar bisa
+    // didekripsi dengan kunci baru.
+    await context.read<VaultProvider>().loadItems();
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Password vault berhasil diganti')),
+    );
+  }
+
   Future<void> _confirmDelete(VaultItem item) async {
     final id = item.id;
     if (id == null) return;
@@ -119,7 +136,16 @@ class _VaultScreenState extends State<VaultScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Vault')),
+      appBar: AppBar(
+        title: const Text('Vault'),
+        actions: <Widget>[
+          IconButton(
+            onPressed: _openChangePassword,
+            tooltip: 'Ganti password',
+            icon: const Icon(Icons.password),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openEditor(),
         tooltip: 'Tambah brankas',
@@ -693,6 +719,174 @@ class _VaultLockedBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Dialog ganti password brankas.
+///
+/// Hanya bisa dipakai saat vault terbuka; verifikasi password lama tetap
+/// diminta sebagai konfirmasi sebelum kunci baru diturunkan.
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  static const int minPasswordLength = 8;
+
+  final TextEditingController _currentCtrl = TextEditingController();
+  final TextEditingController _newCtrl = TextEditingController();
+  final TextEditingController _confirmCtrl = TextEditingController();
+  bool _showPassword = false;
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _currentCtrl.dispose();
+    _newCtrl.dispose();
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_submitting) return;
+
+    final current = _currentCtrl.text;
+    final next = _newCtrl.text;
+    if (current.isEmpty) {
+      setState(() => _error = 'Password lama wajib diisi');
+      return;
+    }
+    if (next.length < minPasswordLength) {
+      setState(
+        () => _error = 'Password baru minimal $minPasswordLength karakter',
+      );
+      return;
+    }
+    if (next != _confirmCtrl.text) {
+      setState(() => _error = 'Konfirmasi password baru tidak sama');
+      return;
+    }
+    if (next == current) {
+      setState(() => _error = 'Password baru harus berbeda dari yang lama');
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+
+    final lock = context.read<VaultLockProvider>();
+    final ok = await lock.changePassword(
+      currentPassword: current,
+      newPassword: next,
+    );
+    if (!mounted) return;
+
+    if (ok) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+
+    setState(() {
+      _submitting = false;
+      _error = lock.error ?? 'Gagal mengganti password';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: const Text('Ganti password vault'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Semua item dienkripsi ulang dengan kunci baru. Proses ini bisa '
+              'memakan beberapa detik; jangan tutup aplikasi.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _currentCtrl,
+              obscureText: !_showPassword,
+              enabled: !_submitting,
+              autofocus: true,
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: 'Password lama',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    setState(() => _showPassword = !_showPassword);
+                  },
+                  icon: Icon(
+                    _showPassword ? Icons.visibility_off : Icons.visibility,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _newCtrl,
+              obscureText: !_showPassword,
+              enabled: !_submitting,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Password baru',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _confirmCtrl,
+              obscureText: !_showPassword,
+              enabled: !_submitting,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submit(),
+              decoration: const InputDecoration(
+                labelText: 'Ulangi password baru',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (_error != null) ...<Widget>[
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Batal'),
+        ),
+        FilledButton.icon(
+          onPressed: _submitting ? null : _submit,
+          icon: _submitting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.password),
+          label: Text(_submitting ? 'Memproses...' : 'Ganti'),
+        ),
+      ],
     );
   }
 }

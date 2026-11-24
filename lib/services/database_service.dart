@@ -296,6 +296,46 @@ class DatabaseService {
     return migrated;
   }
 
+  /// Mengenkripsi ulang semua field sensitif dengan cipher baru dalam satu
+  /// transaksi. Dipakai saat ganti password: bila gagal di tengah jalan,
+  /// seluruh perubahan di-rollback sehingga tidak ada campuran kunci.
+  ///
+  /// `from` harus cipher yang sedang aktif; `to` cipher dengan kunci baru.
+  Future<int> reencryptVaultItems({
+    required VaultEncryptionService from,
+    required VaultEncryptionService to,
+  }) async {
+    if (!from.encryptsData || !to.encryptsData) {
+      throw ArgumentError('Kedua cipher harus aktif untuk re-enkripsi');
+    }
+
+    final fromCodec = VaultRowCodec(from);
+    final toCodec = VaultRowCodec(to);
+    final db = await database;
+    var changed = 0;
+
+    await db.transaction((txn) async {
+      final rows = await txn.query(tableVaultItems);
+      for (final row in rows) {
+        final id = row['id'];
+        if (id is! int) continue;
+
+        final plain = await fromCodec.decryptRow(row);
+        final values = Map<String, Object?>.of(await toCodec.encryptRow(plain))
+          ..remove('id');
+        await txn.update(
+          tableVaultItems,
+          values,
+          where: 'id = ?',
+          whereArgs: <Object?>[id],
+        );
+        changed++;
+      }
+    });
+
+    return changed;
+  }
+
   Future<int> deleteVaultItem(int id) async {
     final db = await database;
     return db.delete(

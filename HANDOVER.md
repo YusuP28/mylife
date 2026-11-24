@@ -121,7 +121,7 @@ cd ~/mylife && mkdir -p build/artifact-<RUN_ID> \
   - `NoOpEncryption` tetap ada sebagai default library, tapi aplikasi selalu memasang `LockedEncryption` saat start.
 - **`lib/services/vault_key_manager.dart` (4B-2, selesai)**:
   - `VaultKeyManager` — PBKDF2-HMAC-SHA256 (210.000 iterasi, 32 byte), salt acak 16 byte, kunci sesi hanya di memori (`SecretKeyData.destroy()` saat `lock()`).
-  - `VaultKeyRecord` + `FileVaultKeyStore` — sidecar `vault_key.json` di direktori dokumen, isi: versi, kdf, iterasi, salt, verifier `enc:v1:...`. **Tidak menyimpan password/kunci.**
+  - `VaultKeyRecord` + `FileVaultKeyStore` — sidecar `vault_key.json` di direktori dokumen, isi: versi, kdf, iterasi, salt, verifier `enc:v1:...`. **Tidak menyimpan password/kunci.** Field opsional `previous` hanya terisi selama ganti password belum final (cadangan kunci lama).
   - Password salah → `unlock` `false`; file rusak/versi tak dikenal → `FormatException`; salt tidak pernah dibuat ulang diam-diam.
 - **`lib/services/vault_row_codec.dart` (4B-3, selesai)**:
   - Hanya `password` dan `notes` yang dienkripsi, idempoten, field kosong dibiarkan.
@@ -134,10 +134,11 @@ cd ~/mylife && mkdir -p build/artifact-<RUN_ID> \
   - Mode buat password (min 8 karakter + konfirmasi) dan mode buka; error dari provider ditampilkan; busy state saat PBKDF2/migrasi berjalan.
 - **Auto-lock (4B-4, selesai)**: `HomeShell` memakai `WidgetsBindingObserver`; `AppLifecycleState.paused`/`hidden` langsung mengunci vault dan mengosongkan plaintext di `VaultProvider`. Editor yang masih terbuka menampilkan banner "Vault terkunci" dan tombol simpan dimatikan (fail closed), bukan menyimpan plaintext.
 - **Idle timer (4B-5, selesai)**: `lib/services/idle_lock_watcher.dart` — lock setelah 5 menit tanpa aktivitas pointer/scroll. Timer dimiliki `VaultLockProvider` (hidup hanya saat vault terbuka); aktivitas dikirim dari `Listener` di `MaterialApp.builder`, jadi semua rute termasuk editor Vault ikut mereset timer. Batasan: mengetik di soft keyboard tidak menghasilkan pointer event, jadi tidak menunda idle.
+- **Ganti password (4B-6, selesai)**: `VaultLockProvider.changePassword()` — verifikasi password lama (`verifyPassword`), turunkan kunci baru (PBKDF2 210.000 + salt baru), tulis record sementara (`previous` = kunci lama), re-enkripsi semua baris via `DatabaseService.reencryptVaultItems()` dalam **satu transaksi**, lalu finalisasi record (hapus `previous`) dan pasang cipher baru. Gagal di tengah → transaksi rollback + record asal dipulihkan (`abortPasswordChange`). UI: ikon kunci di AppBar Vault → dialog 3 field; setelah sukses daftar dimuat ulang sebagai bukti dekripsi dengan kunci baru. `_dbVersion` tetap 3.
 - **Belum dikerjakan**:
   1. `android:allowBackup` masih default `true`. Aman untuk skema master password (salt ikut ter-backup, password diingat pengguna). Wajib diubah ke `false` bila nanti pindah ke kunci Keystore (4C).
-  2. Ganti password vault (butuh re-enkripsi massal) dan layar pemulihan.
-- **Opsional Tahap 4C**: `flutter_secure_storage` (butuh `minSdk` 24, saat ini 23) untuk kunci acak di Keystore + biometrik, pengganti master password.
+  2. Layar pemulihan (tidak ada pemulihan password; hanya dokumentasi).
+- **Opsional Tahap 4C**: `flutter_secure_storage` 11.x (minSdk 23, cocok dengan proyek) untuk kunci acak di Keystore + biometrik; `local_auth` 3.x butuh `minSdk` 24 dan `FlutterFragmentActivity`. Keduanya dependency baru, belum disetujui.
 - **Catatan performa**: PBKDF2 pure Dart bisa terasa lambat di HP kelas menengah; `cryptography_flutter` bisa mempercepat tanpa mengubah format data (butuh dependency tambahan, belum disetujui).
 
 ## Langkah Berikutnya (saat build sukses)

@@ -110,4 +110,76 @@ void main() {
       expect(() => manager.requireKey, throwsA(isA<StateError>()));
     });
   });
+
+  group('VaultKeyManager.changePassword', () {
+    test('finalisasi memakai salt baru dan membuang kunci lama', () async {
+      final store = _MemoryKeyStore();
+      final manager = _manager(store);
+      await manager.createPassword('password-lama');
+      final oldSalt = store.record!.salt;
+      final oldKey = await manager.requireKey.extractBytes();
+
+      final change = await manager.preparePasswordChange('password-baru');
+      await manager.stagePasswordChange(change);
+      await manager.finalizePasswordChange(change);
+
+      expect(store.record!.salt, isNot(equals(oldSalt)));
+      expect(store.record!.previous, isNull);
+      expect(await manager.requireKey.extractBytes(), isNot(equals(oldKey)));
+
+      manager.lock();
+      expect(await manager.unlock('password-lama'), isFalse);
+      expect(await manager.unlock('password-baru'), isTrue);
+    });
+
+    test('sebelum finalisasi password lama masih membuka data lama', () async {
+      final store = _MemoryKeyStore();
+      final manager = _manager(store);
+      await manager.createPassword('password-lama');
+
+      final change = await manager.preparePasswordChange('password-baru');
+      await manager.stagePasswordChange(change);
+      manager.lock();
+
+      final reopened = _manager(store);
+      expect(await reopened.unlock('password-lama'), isTrue);
+      expect(await reopened.unlock('password-baru'), isTrue);
+    });
+
+    test('abort mengembalikan record semula', () async {
+      final store = _MemoryKeyStore();
+      final manager = _manager(store);
+      await manager.createPassword('password-lama');
+      final original = store.record!;
+
+      final change = await manager.preparePasswordChange('password-baru');
+      await manager.stagePasswordChange(change);
+      await manager.abortPasswordChange(change);
+
+      expect(store.record!.salt, equals(original.salt));
+      expect(store.record!.check, original.check);
+      expect(store.record!.previous, isNull);
+      expect(await manager.verifyPassword('password-lama'), isTrue);
+    });
+
+    test('tanpa password tersimpan, persiapan gagal', () async {
+      final manager = _manager(_MemoryKeyStore());
+
+      await expectLater(
+        manager.preparePasswordChange('password-baru'),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('verifyPassword tidak mengubah kunci sesi', () async {
+      final store = _MemoryKeyStore();
+      final manager = _manager(store);
+      await manager.createPassword('password-lama');
+      final keyBefore = await manager.requireKey.extractBytes();
+
+      expect(await manager.verifyPassword('salah'), isFalse);
+      expect(await manager.verifyPassword('password-lama'), isTrue);
+      expect(await manager.requireKey.extractBytes(), equals(keyBefore));
+    });
+  });
 }

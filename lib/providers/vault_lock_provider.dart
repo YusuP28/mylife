@@ -35,6 +35,7 @@ class VaultLockProvider extends ChangeNotifier {
   bool _hasPassword = false;
   bool _unlocked = false;
   bool _busy = false;
+  bool _rotating = false;
   String? _error;
   int _migratedRows = 0;
 
@@ -97,8 +98,72 @@ class VaultLockProvider extends ChangeNotifier {
     }
   }
 
+  /// Ganti password vault: verifikasi password lama, turunkan kunci baru
+  /// (PBKDF2 + salt baru), enkripsi ulang semua item, lalu finalisasi record.
+  ///
+  /// Urutan sengaja: record sementara (dengan kunci lama sebagai cadangan)
+  /// ditulis sebelum re-enkripsi, sehingga proses yang terputus tidak membuat
+  /// data hanya bisa dibuka dengan kunci yang tidak tersimpan.
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (_busy) return false;
+    if (!_unlocked) {
+      _error = 'Buka vault sebelum mengganti password';
+      notifyListeners();
+      return false;
+    }
+
+    _start();
+    _rotating = true;
+    // Kunci lama harus tetap hidup sampai transaksi re-enkripsi selesai.
+    _idle?.stop();
+    VaultKeyChange? change;
+    var finalized = false;
+
+    try {
+      if (!await _keyManager.verifyPassword(currentPassword)) {
+        _error = 'Password lama salah';
+        return false;
+      }
+
+      change = await _keyManager.preparePasswordChange(newPassword);
+      await _keyManager.stagePasswordChange(change);
+
+      final to = AesGcmEncryption(change.key);
+      await _database.reencryptVaultItems(
+        from: AesGcmEncryption(_keyManager.requireKey),
+        to: to,
+      );
+
+      await _keyManager.finalizePasswordChange(change);
+      finalized = true;
+      _database.vaultEncryption = to;
+      return true;
+    } catch (e) {
+      if (change != null && !finalized) {
+        try {
+          await _keyManager.abortPasswordChange(change);
+        } catch (_) {
+          // Transaksi database sudah di-rollback; data lama tetap terbaca
+          // dengan password lama meski pembersihan record gagal.
+        }
+      }
+      _error = 'Gagal mengganti password: $e';
+      return false;
+    } finally {
+      _rotating = false;
+      if (_unlocked) _idle?.start();
+      _finish();
+    }
+  }
+
   /// Menutup vault: kunci dihapus dari memori, database menolak operasi.
   void lock() {
+    // Rotasi password butuh kunci lama tetap hidup sampai transaksi selesai.
+    if (_rotating) return;
+
     _idle?.stop();
     _keyManager.lock();
     _database.vaultEncryption = const LockedEncryption();
