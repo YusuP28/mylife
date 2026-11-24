@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/finance_transaction.dart';
 import '../services/database_service.dart';
+import '../services/finance_summary.dart';
 
 class FinanceProvider extends ChangeNotifier {
   FinanceProvider({DatabaseService? service})
@@ -71,6 +72,10 @@ class FinanceProvider extends ChangeNotifier {
       return haystack.contains(keyword);
     }).toList(growable: false);
   }
+
+  /// Ringkasan transaksi yang sedang tampil, mengikuti filter aktif.
+  FinanceSummary get visibleSummary =>
+      summarizeTransactions(visibleTransactions);
 
   void setQuery(String value) {
     if (_query == value) return;

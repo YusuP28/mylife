@@ -47,6 +47,12 @@ class _FinanceScreenState extends State<FinanceScreen> {
       symbol: 'Rp',
       decimalDigits: 0,
     );
+    final filtered = provider.hasActiveFilter;
+    final visible = provider.visibleSummary;
+    final totalIncome = filtered ? visible.income : provider.totalIncome;
+    final totalExpense = filtered ? visible.expense : provider.totalExpense;
+    final balance =
+        filtered ? (totalIncome - totalExpense).toDouble() : provider.balance;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Keuangan')),
@@ -58,10 +64,13 @@ class _FinanceScreenState extends State<FinanceScreen> {
       body: Column(
         children: <Widget>[
           _SummaryCard(
-            balance: provider.balance,
-            totalIncome: provider.totalIncome,
-            totalExpense: provider.totalExpense,
+            balance: balance,
+            totalIncome: totalIncome,
+            totalExpense: totalExpense,
             currency: currency,
+            filtered: filtered,
+            visibleCount: visible.count,
+            totalCount: provider.transactions.length,
           ),
           if (provider.error != null)
             _ErrorState(
@@ -177,12 +186,20 @@ class _SummaryCard extends StatelessWidget {
     required this.totalIncome,
     required this.totalExpense,
     required this.currency,
+    required this.filtered,
+    required this.visibleCount,
+    required this.totalCount,
   });
 
   final double balance;
   final int totalIncome;
   final int totalExpense;
   final NumberFormat currency;
+
+  /// `true` bila angka mengikuti filter, bukan seluruh transaksi.
+  final bool filtered;
+  final int visibleCount;
+  final int totalCount;
 
   @override
   Widget build(BuildContext context) {
@@ -205,13 +222,28 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Ringkasan', style: theme.textTheme.titleMedium),
+          Row(
+            children: <Widget>[
+              Text(
+                filtered ? 'Ringkasan filter' : 'Ringkasan',
+                style: theme.textTheme.titleMedium,
+              ),
+              const Spacer(),
+              if (filtered)
+                Text(
+                  '$visibleCount dari $totalCount transaksi',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
               _SummaryItem(
-                label: 'Saldo',
+                label: filtered ? 'Selisih' : 'Saldo',
                 value: currency.format(balance),
                 color: balance >= 0 ? Colors.green[700] : Colors.red[700],
               ),
