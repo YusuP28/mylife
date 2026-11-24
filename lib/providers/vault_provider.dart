@@ -18,6 +18,36 @@ class VaultProvider extends ChangeNotifier {
   String? get error => _error;
   int get count => _items.length;
 
+  String _searchQuery = '';
+
+  List<VaultItem> get _filteredItems {
+    final q = _searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return items;
+    return items.where((i) {
+      final haystack =
+          '${i.title} ${i.username} ${i.password} ${i.url} ${i.notes}'
+              .toLowerCase();
+      return haystack.contains(q);
+    }).toList(growable: false);
+  }
+
+  List<VaultItem> get visibleItems => _filteredItems;
+
+  String get searchQuery => _searchQuery;
+  bool get hasActiveSearch => _searchQuery.trim().isNotEmpty;
+
+  void setSearchQuery(String value) {
+    if (_searchQuery == value) return;
+    _searchQuery = value;
+    notifyListeners();
+  }
+
+  void clearSearch() {
+    if (_searchQuery.isEmpty) return;
+    _searchQuery = '';
+    notifyListeners();
+  }
+
   Future<void> loadItems() async {
     _loading = true;
     _error = null;
