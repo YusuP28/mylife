@@ -132,11 +132,11 @@ cd ~/mylife && mkdir -p build/artifact-<RUN_ID> \
   - `lock()` → `VaultKeyManager.lock()` + `LockedEncryption` + `VaultProvider.clearItems()`.
 - **`lib/screens/vault/vault_lock_screen.dart` (4B-4, selesai)**:
   - Mode buat password (min 8 karakter + konfirmasi) dan mode buka; error dari provider ditampilkan; busy state saat PBKDF2/migrasi berjalan.
-- **Auto-lock (4B-4, selesai)**: `HomeShell` memakai `WidgetsBindingObserver`; `AppLifecycleState.paused`/`hidden` langsung mengunci vault dan mengosongkan plaintext di `VaultProvider`. Catatan: editor yang masih terbuka saat app ke background akan gagal menyimpan (fail closed), bukan menyimpan plaintext.
+- **Auto-lock (4B-4, selesai)**: `HomeShell` memakai `WidgetsBindingObserver`; `AppLifecycleState.paused`/`hidden` langsung mengunci vault dan mengosongkan plaintext di `VaultProvider`. Editor yang masih terbuka menampilkan banner "Vault terkunci" dan tombol simpan dimatikan (fail closed), bukan menyimpan plaintext.
+- **Idle timer (4B-5, selesai)**: `lib/services/idle_lock_watcher.dart` — lock setelah 5 menit tanpa aktivitas pointer/scroll; timer hanya hidup selama vault terbuka, di-reset oleh `Listener` di `HomeShell`. Batasan: mengetik di soft keyboard tidak menghasilkan pointer event, jadi tidak menunda idle.
 - **Belum dikerjakan**:
   1. `android:allowBackup` masih default `true`. Aman untuk skema master password (salt ikut ter-backup, password diingat pengguna). Wajib diubah ke `false` bila nanti pindah ke kunci Keystore (4C).
-  2. Auto-lock berbasis idle timer (sekarang hanya lifecycle background).
-  3. Ganti password vault (butuh re-enkripsi massal) dan layar pemulihan.
+  2. Ganti password vault (butuh re-enkripsi massal) dan layar pemulihan.
 - **Opsional Tahap 4C**: `flutter_secure_storage` (butuh `minSdk` 24, saat ini 23) untuk kunci acak di Keystore + biometrik, pengganti master password.
 - **Catatan performa**: PBKDF2 pure Dart bisa terasa lambat di HP kelas menengah; `cryptography_flutter` bisa mempercepat tanpa mengubah format data (butuh dependency tambahan, belum disetujui).
 
