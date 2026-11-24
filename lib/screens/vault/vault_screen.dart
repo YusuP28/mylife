@@ -461,6 +461,15 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
   }
 
   Future<void> _save() async {
+    if (!context.read<VaultLockProvider>().isUnlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vault terkunci. Buka brankas dulu sebelum menyimpan.'),
+        ),
+      );
+      return;
+    }
+
     final title = _titleCtrl.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -523,13 +532,14 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final locked = !context.watch<VaultLockProvider>().isUnlocked;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit brankas' : 'Brankas baru'),
         actions: [
           IconButton(
-            onPressed: _saving ? null : _save,
+            onPressed: (_saving || locked) ? null : _save,
             tooltip: 'Simpan',
             icon: _saving
                 ? const SizedBox(
@@ -545,8 +555,13 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: <Widget>[
+            if (locked)
+              _VaultLockedBanner(
+                onBack: () => Navigator.of(context).pop(),
+              ),
             TextField(
               controller: _titleCtrl,
+              enabled: !locked,
               decoration: const InputDecoration(
                 labelText: 'Judul *',
                 border: OutlineInputBorder(),
@@ -555,6 +570,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _usernameCtrl,
+              enabled: !locked,
               decoration: const InputDecoration(
                 labelText: 'Username',
                 border: OutlineInputBorder(),
@@ -563,6 +579,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _passwordCtrl,
+              enabled: !locked,
               obscureText: !_showPassword,
               decoration: InputDecoration(
                 labelText: 'Password',
@@ -592,6 +609,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _urlCtrl,
+              enabled: !locked,
               decoration: const InputDecoration(
                 labelText: 'URL (opsional)',
                 border: OutlineInputBorder(),
@@ -600,6 +618,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _notesCtrl,
+              enabled: !locked,
               maxLines: 4,
               decoration: const InputDecoration(
                 labelText: 'Catatan (opsional)',
@@ -609,12 +628,70 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: _saving ? null : _save,
+              onPressed: (_saving || locked) ? null : _save,
               icon: const Icon(Icons.save),
               label: Text(_saving ? 'Menyimpan...' : 'Simpan'),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+/// Ditampilkan di editor ketika auto-lock terjadi saat layar ini masih terbuka.
+///
+/// Data yang sudah diketik tidak disimpan: menyimpan saat terkunci akan gagal
+/// (cipher `LockedEncryption`), jadi tombol simpan dimatikan dan pengguna
+/// diarahkan kembali ke layar buka brankas.
+class _VaultLockedBanner extends StatelessWidget {
+  const _VaultLockedBanner({required this.onBack});
+
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final onError = theme.colorScheme.onErrorContainer;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.lock, size: 20, color: theme.colorScheme.error),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Vault terkunci',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: onError,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Aplikasi masuk background, jadi kunci enkripsi sudah dihapus. '
+            'Perubahan di layar ini tidak akan disimpan sampai brankas dibuka '
+            'kembali.',
+            style: TextStyle(color: onError, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: onBack,
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Kembali ke brankas'),
+          ),
+        ],
       ),
     );
   }
