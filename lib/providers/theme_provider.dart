@@ -13,10 +13,10 @@ class ThemeProvider extends ChangeNotifier {
   ThemeMode get mode => _mode;
 
   List<ThemeChoice> get choices => const <ThemeChoice>[
-        ThemeChoice.system,
-        ThemeChoice.light,
-        ThemeChoice.dark,
-      ];
+    ThemeChoice.system,
+    ThemeChoice.light,
+    ThemeChoice.dark,
+  ];
 
   factory ThemeProvider() {
     return ThemeProvider._();
