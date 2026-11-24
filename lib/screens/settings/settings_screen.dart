@@ -79,9 +79,10 @@ class SettingsScreen extends StatelessWidget {
           _SecurityWarningCard(
             items: [
               'Isi brankas dienkripsi AES-256-GCM. Kunci diturunkan dari password dengan PBKDF2-HMAC-SHA256 (210.000 iterasi).',
-              'Password tidak disimpan di perangkat dan tidak ada pemulihan. Lupa password berarti item brankas tidak bisa dibuka selamanya.',
+              'Password tidak disimpan di perangkat dan tidak ada mekanisme pemulihan. Lupa password berarti item brankas tidak bisa dibuka selamanya.',
+              'Buka cepat (keychain/keystore) hanya mengikat sesi ke perangkat. Kunci ini tidak menyimpan password dan tidak bisa menggantikan password yang lupa.',
               'Saat brankas terbuka, isinya ada sebagai teks biasa di memori. Vault otomatis terkunci ketika aplikasi masuk background.',
-              'File vault_key.json hanya berisi salt dan verifier, bukan password. Jangan menghapusnya selama data brankas masih dibutuhkan.',
+              'File vault_key.json hanya berisi salt dan verifier (bukan password). Jangan menghapusnya selama data brankas masih dibutuhkan.',
             ],
           ),
         ],

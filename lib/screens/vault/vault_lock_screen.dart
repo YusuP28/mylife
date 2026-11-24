@@ -186,15 +186,49 @@ class _VaultLockScreenState extends State<VaultLockScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
+                color: theme.colorScheme.errorContainer,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(
-                'Password tidak disimpan di perangkat. Lupa password berarti '
-                'data brankas tidak bisa dibuka lagi.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Icon(
+                        Icons.warning_rounded,
+                        color: theme.colorScheme.onErrorContainer,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Pemulihan Tidak Tersedia',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: theme.colorScheme.onErrorContainer,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Password ini menurunkan kunci enkripsi AES-256-GCM '
+                    'langsung di perangkat. Kunci tidak pernah dikirim ke server '
+                    'atau tersimpan di ruang aman manapun.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Lupa password = item brankas tidak bisa dibuka selamanya. '
+                    'Buka cepat (kunci perangkat) tidak bisa menggantikan '
+                    'password yang lupa karena kunci perangkat hanya mengikat '
+                    'sesi, bukan menyimpan password.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onErrorContainer,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
