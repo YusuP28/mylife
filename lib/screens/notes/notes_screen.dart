@@ -143,7 +143,7 @@ class _NotesScreenState extends State<NotesScreen> {
         itemCount: notes.length,
         itemBuilder: (context, index) {
           final note = notes[index];
-          return _NoteTile(
+          return _NoteGridTile(
             note: note,
             onTap: () => _openEditor(note),
             onDelete: () => _confirmDelete(note),
@@ -337,6 +337,83 @@ class _EmptyState extends StatelessWidget {
             label: const Text('Tambah catatan'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Grid tile untuk catatan (3 kolom).
+class _NoteGridTile extends StatelessWidget {
+  const _NoteGridTile({
+    required this.note,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  final Note note;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final preview = _cleanPreview(note.body);
+
+    return Material(
+      color: theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                note.title.isEmpty ? 'Tanpa judul' : note.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+              if (preview.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 4),
+                Text(
+                  preview,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+              const Spacer(),
+              Text(
+                DateFormat.yMMMd('id_ID').format(note.updatedAt),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 9,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 16),
+                  color: theme.colorScheme.error,
+                  onPressed: onDelete,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

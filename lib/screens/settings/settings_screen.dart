@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/note.dart';
-import '../../models/vault_item.dart';
 import '../../providers/finance_provider.dart';
 import '../../providers/notes_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -54,32 +52,6 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => _showAboutDialog(context),
           ),
           const Divider(),
-          _DataManagementSection(
-            notesCount: notesProvider.notes.length,
-            financeCount: financeProvider.transactions.length,
-            vaultCount: vaultProvider.count,
-            onResetNotes: () => _showResetDialog(
-              context: context,
-              title: 'Reset Catatan',
-              description: 'Hapus SEMUA catatan (${notesProvider.notes.length} buah) dari perangkat. Tindakan tidak bisa dibatalkan.',
-              onConfirm: () => _resetNotes(context),
-            ),
-            onResetFinance: () => _showResetDialog(
-              context: context,
-              title: 'Reset Keuangan',
-              description:
-                  'Hapus SEMUA transaksi (${financeProvider.transactions.length} buah) dari perangkat. Saldo akan kembali ke nol. Tindakan tidak bisa dibatalkan.',
-              onConfirm: () => _resetFinance(context),
-            ),
-            onResetVault: () => _showResetDialog(
-              context: context,
-              title: 'Reset Vault',
-              description:
-                  'Hapus SEMUA item brankas (${vaultProvider.count} buah) dari perangkat. Password Anda hilang selamanya. Tindakan tidak bisa dibatalkan.',
-              onConfirm: () => _resetVault(context),
-            ),
-          ),
-          const Divider(),
           _SecurityWarningCard(
             items: [
               'Isi brankas dienkripsi AES-256-GCM. Kunci diturunkan dari password dengan PBKDF2-HMAC-SHA256 (210.000 iterasi).',
@@ -128,58 +100,6 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
-
-  Future<void> _showResetDialog({
-    required BuildContext context,
-    required String title,
-    required String description,
-    required VoidCallback onConfirm,
-  }) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: Text(description),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Reset'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && context.mounted) {
-      onConfirm();
-    }
-  }
-
-  Future<void> _resetNotes(BuildContext context) async {
-    await context.read<NotesProvider>().clearAllNotes();
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Semua catatan telah dihapus')),
-    );
-  }
-
-  Future<void> _resetFinance(BuildContext context) async {
-    await context.read<FinanceProvider>().clearAllTransactions();
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Semua transaksi telah dihapus')),
-    );
-  }
-
-  Future<void> _resetVault(BuildContext context) async {
-    await context.read<VaultProvider>().clearAllItems();
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Semua item brankas telah dihapus')),
-    );
-  }
 }
 
 class _SummaryCard extends StatelessWidget {
@@ -217,85 +137,6 @@ class _SummaryCard extends StatelessWidget {
           backgroundColor: color.withOpacity(0.1),
         ),
       ),
-    );
-  }
-}
-
-class _DataManagementSection extends StatelessWidget {
-  const _DataManagementSection({
-    required this.notesCount,
-    required this.financeCount,
-    required this.vaultCount,
-    required this.onResetNotes,
-    required this.onResetFinance,
-    required this.onResetVault,
-  });
-
-  final int notesCount;
-  final int financeCount;
-  final int vaultCount;
-  final VoidCallback onResetNotes;
-  final VoidCallback onResetFinance;
-  final VoidCallback onResetVault;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text('Manajemen Data',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600)),
-        const SizedBox(height: 12),
-        _ResetButton(
-          icon: Icons.description,
-          label: 'Catatan',
-          count: notesCount,
-          color: Colors.blue,
-          onPressed: onResetNotes,
-        ),
-        const SizedBox(height: 8),
-        _ResetButton(
-          icon: Icons.account_balance_wallet,
-          label: 'Keuangan',
-          count: financeCount,
-          color: Colors.green,
-          onPressed: onResetFinance,
-        ),
-        const SizedBox(height: 8),
-        _ResetButton(
-          icon: Icons.vpn_key,
-          label: 'Vault',
-          count: vaultCount,
-          color: Colors.purple,
-          onPressed: onResetVault,
-        ),
-      ],
-    );
-  }
-}
-
-class _ResetButton extends StatelessWidget {
-  const _ResetButton({
-    required this.icon,
-    required this.label,
-    required this.count,
-    required this.color,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final int count;
-  final Color color;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, color: color),
-      label: Text('$label ($count)'),
     );
   }
 }
