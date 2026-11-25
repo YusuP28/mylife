@@ -13,11 +13,12 @@ Build **100% via GitHub Actions** (split ABI arm64-v8a). **Dilarang build lokal 
 | Modul Catatan: `Note` + `DatabaseService` + `NotesProvider` + list/FAB + pencarian | ✅ Done |
 | Android V2 embedding (MainActivity.kt, Manifest, styles, launch_background) | ✅ Done |
 | Gradle 9.5.0 / AGP 9.3.1 / Built-in Kotlin 2.4.10 / Java 17 | ✅ Done |
-| Build terakhir: Run ID **45533239145** (success, artifact `mylife-apk` split ABI arm64-v8a) | ✅ Green |
+| Build terakhir: Run ID **45534290270** (success, artifact `mylife-apk` universal release) | ✅ Green |
 
 ### Perubahan UI Terbaru
-- Border konsisten `outlineVariant` diterapkan pada kartu list mode di Catatan, Keuangan, dan Vault agar serasi dengan grid mode.
+- Border konsisten `outlineVariant` diterapkan pada **semua kartu** (mode list + mode grid) di Catatan, Keuangan, dan Vault.
 - Grid tetap 3 kolom (`crossAxisCount: 3`) dengan penyesuaian baris otomatis.
+- Kartu grid mode sekarang memiliki garis batas yang jelas, sama seperti mode list.
 
 ## Struktur Kunci
 ```
