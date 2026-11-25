@@ -343,8 +343,10 @@ class _FilterBar extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Row(
-        children: <Widget>[
+      child: Padding(
+        padding: const EdgeInsets.only(right: 16),
+        child: Row(
+          children: <Widget>[
             _FilterMenu(
               label: typeFilter == null
                   ? 'Semua tipe'
@@ -423,6 +425,7 @@ class _FilterBar extends StatelessWidget {
             ],
           ],
         ),
+      ),
     );
   }
 }
