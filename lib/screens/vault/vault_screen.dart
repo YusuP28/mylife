@@ -340,6 +340,37 @@ class _VaultScreenState extends State<VaultScreen> {
       ),
     );
   }
+
+  Widget _buildGridView(List<VaultItem> items) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(12),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        final isVisible = _visiblePasswords[item.id ?? -1] ?? false;
+        return _GridItemTile(
+          item: item,
+          isVisible: isVisible,
+          onTap: () => _openEditor(item),
+          onDelete: () => _confirmDelete(item),
+          onToggle: () => _togglePasswordVisibility(item.id ?? -1),
+          onCopy: () {
+            final pw = item.password;
+            if (pw.isEmpty) return;
+            Clipboard.setData(ClipboardData(text: pw));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Password disalin ke papan klip')),
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 class _NoResultsSearch extends StatelessWidget {
@@ -416,38 +447,6 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Grid view 3 kolom untuk item vault.
-Widget _buildGridView(List<VaultItem> items) {
-  return GridView.builder(
-    padding: const EdgeInsets.all(12),
-    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: 3,
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-    ),
-    itemCount: items.length,
-    itemBuilder: (context, index) {
-      final item = items[index];
-      final isVisible = _visiblePasswords[item.id ?? -1] ?? false;
-      return _GridItemTile(
-        item: item,
-        isVisible: isVisible,
-        onTap: () => _openEditor(item),
-        onDelete: () => _confirmDelete(item),
-        onToggle: () => _togglePasswordVisibility(item.id ?? -1),
-        onCopy: () {
-          final pw = item.password;
-          if (pw.isEmpty) return;
-          Clipboard.setData(ClipboardData(text: pw));
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Password disalin ke papan klip')),
-          );
-        },
-      );
-    },
-  );
 }
 
 class _VaultItemTile extends StatelessWidget {
@@ -648,7 +647,6 @@ class _GridItemTile extends StatelessWidget {
                     : '•' *
                           (item.password.isNotEmpty ? item.password.length : 4),
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily: 'monospace',
                   fontSize: 10,
