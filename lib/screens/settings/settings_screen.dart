@@ -149,19 +149,16 @@ class _SecurityWarningCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final warningColor = theme.brightness == Brightness.dark
-        ? Colors.amber.shade200
-        : Colors.amber.shade900;
-    final borderColor = theme.brightness == Brightness.dark
-        ? Colors.amber.shade700
-        : Colors.amber.shade300;
+    // Tingkatkan kontras: tema terang pakai teks gelap, tema gelap pakai teks terang
+    final isDark = theme.brightness == Brightness.dark;
+    final warningColor = isDark ? Colors.amber.shade100 : Colors.amber.shade900;
+    final bgColor = isDark ? Colors.amber.shade900.withOpacity(0.25) : Colors.amber.shade50;
+    final borderColor = isDark ? Colors.amber.shade600 : Colors.amber.shade400;
 
     return Container(
-      color: theme.brightness == Brightness.dark
-          ? Colors.amber.shade900.withOpacity(0.15)
-          : Colors.amber.shade50,
+      color: bgColor,
       decoration: BoxDecoration(
-        border: Border.all(color: borderColor),
+        border: Border.all(color: borderColor, width: 1.5),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
@@ -176,7 +173,7 @@ class _SecurityWarningCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text('Peringatan Keamanan',
                     style: theme.textTheme.titleSmall?.copyWith(
-                        color: warningColor, fontWeight: FontWeight.w600)),
+                        color: warningColor, fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 12),
@@ -191,12 +188,16 @@ class _SecurityWarningCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       items[i],
-                      style: TextStyle(color: warningColor, height: 1.4),
+                      style: TextStyle(
+                        color: warningColor,
+                        height: 1.5,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],
               ),
-              if (i < items.length - 1) const SizedBox(height: 8),
+              if (i < items.length - 1) const SizedBox(height: 10),
             ]
           ],
         ),
