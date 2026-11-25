@@ -423,7 +423,7 @@ class _FilterBar extends StatelessWidget {
             ],
           ],
         ),
-      );
+    );
   }
 }
 
