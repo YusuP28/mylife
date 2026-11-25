@@ -14,8 +14,8 @@ Build **100% via GitHub Actions** (split ABI arm64-v8a). **Dilarang build lokal 
 | Android V2 embedding (MainActivity.kt, Manifest, styles, launch_background) | ✅ Done |
 | Gradle 9.5.0 / AGP 9.3.1 / Built-in Kotlin 2.4.10 / Java 17 | ✅ Done |
 | Build terakhir: |
-| - Run ID **45539280401** (success, artifact `mylife-apk` universal release) | ✅ Green |
-| - Run ID **45538373014** (success, artifact `mylife-apk` split ABI arm64-v8a) | ✅ Green |
+| - Run ID **45539280401** (success, artifact `mylife-apk` universal release, 50M) | ✅ Green |
+| - Run ID **45539953572** (success, artifact `mylife-apk` split ABI arm64-v8a, 18M) | ✅ Green |
 
 ### Perubahan UI Terbaru
 - Border konsisten `outlineVariant` diterapkan pada **semua kartu** (mode list + mode grid) di Catatan, Keuangan, dan Vault.
