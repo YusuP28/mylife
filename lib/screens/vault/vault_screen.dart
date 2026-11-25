@@ -623,77 +623,81 @@ class _GridItemTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: theme.colorScheme.outlineVariant),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(Icons.vpn_key, size: 24, color: theme.colorScheme.primary),
-              const SizedBox(height: 4),
-              Text(
-                item.title.isEmpty ? 'Tanpa judul' : item.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (item.username.isNotEmpty) ...<Widget>[
-                const SizedBox(height: 2),
-                Text(
-                  item.username,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Icon(Icons.vpn_key, size: 24, color: theme.colorScheme.primary),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.title.isEmpty ? 'Tanpa judul' : item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
-              const Spacer(),
-              SelectableText(
-                isVisible
-                    ? item.password
-                    : '•' *
-                          (item.password.isNotEmpty ? item.password.length : 4),
-                maxLines: 1,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 10,
-                  color: isVisible
-                      ? theme.colorScheme.onSurface
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Flexible(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: <Widget>[
-                    IconButton(
-                      icon: Icon(
-                        isVisible ? Icons.visibility_off : Icons.visibility,
-                        size: 16,
+                  if (item.username.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 2),
+                    Text(
+                      item.username,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      onPressed: onToggle,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy, size: 16),
-                      onPressed: onCopy,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 16),
-                      color: theme.colorScheme.error,
-                      onPressed: onDelete,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
                     ),
                   ],
-                ),
-              ),
-            ],
+                  const Spacer(),
+                  SelectableText(
+                    isVisible
+                        ? item.password
+                        : '•' *
+                              (item.password.isNotEmpty ? item.password.length : 4),
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 10,
+                      color: isVisible
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        IconButton(
+                          icon: Icon(
+                            isVisible ? Icons.visibility_off : Icons.visibility,
+                            size: 16,
+                          ),
+                          onPressed: onToggle,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.copy, size: 16),
+                          onPressed: onCopy,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 16),
+                          color: theme.colorScheme.error,
+                          onPressed: onDelete,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
