@@ -9,8 +9,8 @@ import '../models/note.dart';
 import '../models/vault_item.dart';
 import '../providers/globals_provider.dart';
 import '../providers/vault_provider.dart';
-import '../screens/finance/finance_screen.dart';
-import '../screens/notes/notes_screen.dart';
+import '../screens/finance/finance_editor_screen.dart';
+import '../screens/notes/note_editor_screen.dart';
 import '../screens/vault/vault_screen.dart';
 
 class GlobalSearchDelegate extends StatelessWidget {
