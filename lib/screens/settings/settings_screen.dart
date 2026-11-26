@@ -338,7 +338,7 @@ class _BackupSectionState extends State<_BackupSection> {
       );
       return null;
     }
-    final file = await backup._getBackupFile();
+    final file = await backup.getFile();
     return file.exists() ? file : null;
   }
 
