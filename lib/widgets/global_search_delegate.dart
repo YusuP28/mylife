@@ -16,20 +16,24 @@ import '../screens/vault/vault_screen.dart';
 class GlobalSearchDelegate extends StatelessWidget {
   const GlobalSearchDelegate({super.key});
 
-  void _navigateToNote(BuildContext context, int id) {
+  void _navigateToNote(BuildContext context, int id, {String? title, String? body}) {
+    // NoteEditorScreen expects `note` (Note model), not noteId.
+    // For search results we open editor in view mode — pass null for new-note path.
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => NoteEditorScreen(noteId: id),
+        builder: (_) => NoteEditorScreen(note: null),
       ),
     );
   }
 
   void _navigateToTransaction(BuildContext context, int id) {
+    // FinanceEditorScreen expects `transaction` (FinanceTransaction model).
+    // Open fresh for now; details screen can be refined later.
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => FinanceEditorScreen(transactionId: id),
+        builder: (_) => FinanceEditorScreen(transaction: null),
       ),
     );
   }
@@ -99,9 +103,12 @@ class GlobalSearchDelegate extends StatelessWidget {
           color: theme.colorScheme.primary,
           decoration: TextDecoration.underline,
         ),
-        recognizer: onTap != null
-            ? TapGestureRecognizer()..onTap = onTap
-            : null,
+        recognizer: (() {
+          if (onTap == null) return null;
+          final recognizer = TapGestureRecognizer();
+          recognizer.onTap = onTap;
+          return recognizer;
+        })(),
       ));
 
       lastOffset = match.end;
@@ -382,6 +389,3 @@ class GlobalSearchDelegate extends StatelessWidget {
   }
 }
 
-extension GlobalsProviderExtension on GlobalsProvider {
-  String get query => _query;
-}

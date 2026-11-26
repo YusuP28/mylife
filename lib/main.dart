@@ -39,14 +39,6 @@ class MylifeApp extends StatelessWidget {
         ChangeNotifierProvider<VaultProvider>(
           create: (_) => VaultProvider(),
         ),
-        ProxyProvider4<NotesProvider, FinanceProvider, VaultProvider, GlobalsProvider>(
-          update: (_, notes, finance, vault, previous) =>
-              (previous ?? GlobalsProvider(
-                notesProvider: notes,
-                financeProvider: finance,
-                vaultProvider: vault,
-              )),
-        ),
         ChangeNotifierProvider<GlobalsProvider>(
           create: (_) => GlobalsProvider(
             notesProvider: _.read<NotesProvider>(),

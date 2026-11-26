@@ -9,9 +9,9 @@ import '../providers/vault_provider.dart';
 
 /// Hasil pencarian global lintas-modul.
 class GlobalSearchResult {
-  GlobalSearchResult.note({required this.note});
-  GlobalSearchResult.transaction({required this.transaction});
-  GlobalSearchResult.vaultItem({required this.item});
+  GlobalSearchResult.note({this.note, this.transaction, this.item});
+  GlobalSearchResult.transaction({this.note, this.transaction, this.item});
+  GlobalSearchResult.vaultItem({this.note, this.transaction, this.item});
 
   final Note? note;
   final FinanceTransaction? transaction;
