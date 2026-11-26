@@ -38,6 +38,7 @@ class GlobalsProvider extends ChangeNotifier {
       List<GlobalSearchResult>.unmodifiable(_results);
   bool get hasResults => _results.isNotEmpty;
   bool get hasActiveSearch => _query.trim().isNotEmpty;
+  String get query => _query;
 
   void setQuery(String value) {
     if (_query == value) return;

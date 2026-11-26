@@ -148,6 +148,9 @@ class BackupService {
     }
   }
 
+  /// Return the internal backup file path.
+  Future<File> getFile() async => _getBackupFile();
+
   /// Cek apakah ada file backup.
   Future<bool> hasBackup() async {
     return (await _getBackupFile()).exists();
