@@ -16,6 +16,7 @@ class FinanceScreen extends StatefulWidget {
 class _FinanceScreenState extends State<FinanceScreen> {
   late final TextEditingController _searchController;
   bool _showGrid = false;
+  bool _showMonthlySummary = false;
 
   @override
   void initState() {
@@ -38,6 +39,10 @@ class _FinanceScreenState extends State<FinanceScreen> {
   void _resetFilters() {
     _searchController.clear();
     context.read<FinanceProvider>().resetFilters();
+  }
+
+  void _toggleMonthlySummary() {
+    setState(() => _showMonthlySummary = !_showMonthlySummary);
   }
 
   @override
@@ -65,6 +70,11 @@ class _FinanceScreenState extends State<FinanceScreen> {
             tooltip: _showGrid ? 'Tampilan daftar' : 'Tampilan grid',
             onPressed: () => setState(() => _showGrid = !_showGrid),
           ),
+          IconButton(
+            icon: Icon(_showMonthlySummary ? Icons.trending_up : Icons.trending_down),
+            tooltip: _showMonthlySummary ? 'Sembunyikan ringkasan bulanan' : 'Ringkasan bulanan',
+            onPressed: _toggleMonthlySummary,
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -83,13 +93,19 @@ class _FinanceScreenState extends State<FinanceScreen> {
             visibleCount: visible.count,
             totalCount: provider.transactions.length,
           ),
+          // Ringkasan Bulanan
+          if (_showMonthlySummary && provider.monthlySummaries.isNotEmpty)
+            _MonthlySummaryBar(
+              summaries: provider.monthlySummaries,
+              currency: currency,
+            ),
           if (provider.error != null)
             _ErrorState(
               error: provider.error!,
               onRetry: () => provider.loadTransactions(),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: TextField(
               controller: _searchController,
               onChanged: provider.setQuery,
@@ -305,6 +321,110 @@ class _SummaryItem extends StatelessWidget {
           style: TextStyle(color: color, fontWeight: FontWeight.w600),
         ),
       ],
+    );
+  }
+}
+
+/// Bar ringkasan bulanan horizontal yang bisa di-scroll.
+class _MonthlySummaryBar extends StatelessWidget {
+  const _MonthlySummaryBar({
+    required this.summaries,
+    required this.currency,
+  });
+
+  final Map<DateTime, dynamic> summaries;
+  final NumberFormat currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final entries = summaries.entries.toList();
+
+    return Container(
+      height: 90,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: entries.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final entry = entries[index];
+          final date = entry.key;
+          final summary = entry.value as dynamic;
+          final net = (summary.income - summary.expense);
+          return _MonthlyChip(
+            date: date,
+            income: summary.income,
+            expense: summary.expense,
+            net: net,
+            currency: currency,
+            theme: theme,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MonthlyChip extends StatelessWidget {
+  const _MonthlyChip({
+    required this.date,
+    required this.income,
+    required this.expense,
+    required this.net,
+    required this.currency,
+    required this.theme,
+  });
+
+  final DateTime date;
+  final int income;
+  final int expense;
+  final int net;
+  final NumberFormat currency;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final netColor = net >= 0 ? Colors.green[700] : Colors.red[700];
+
+    return Container(
+      width: 140,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            DateFormat('MMM yy', 'id_ID').format(date),
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '+ ${currency.format(income)}',
+            style: const TextStyle(color: Colors.green, fontSize: 10),
+          ),
+          Text(
+            '- ${currency.format(expense)}',
+            style: const TextStyle(color: Colors.red, fontSize: 10),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Selisih: ${currency.format(net)}',
+            style: TextStyle(
+              color: netColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -724,7 +844,7 @@ class _EmptyState extends StatelessWidget {
           Text('Belum ada transaksi', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(
-            'Tekan tombol + untuk menambah transaksi keuangan.',
+            'Tekan tombol + untuk menambah transaksi keuangan.\n\nGunakan #rec:bulanan di keterangan untuk transaksi berulang.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,

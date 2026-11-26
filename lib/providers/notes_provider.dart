@@ -11,31 +11,82 @@ class NotesProvider extends ChangeNotifier {
 
   List<Note> _notes = <Note>[];
   String _query = '';
+  String _tagFilter = '';
   bool _loading = false;
   String? _error;
 
   List<Note> get notes => List<Note>.unmodifiable(_notes);
-
-  List<Note> get visibleNotes {
-    final keyword = _query.trim().toLowerCase();
-    if (keyword.isEmpty) return notes;
-
-    return _notes
-        .where(
-          (note) =>
-              note.title.toLowerCase().contains(keyword) ||
-              note.body.toLowerCase().contains(keyword),
-        )
-        .toList(growable: false);
-  }
-
   String get query => _query;
+  String get tagFilter => _tagFilter;
   bool get loading => _loading;
   String? get error => _error;
+
+  List<Note> get visibleNotes {
+    final allNotes = _notes;
+    final tagKeyword = _tagFilter.trim().toLowerCase();
+    final searchKeyword = _query.trim().toLowerCase();
+
+    // Filter gabungan tag + pencarian
+    if (tagKeyword.isNotEmpty && searchKeyword.isNotEmpty) {
+      return allNotes.where((n) {
+        final byTag = n.body.toLowerCase().contains('#tag:$tagKeyword');
+        final byQuery =
+            n.title.toLowerCase().contains(searchKeyword) ||
+                n.body.toLowerCase().contains(searchKeyword);
+        return byTag && byQuery;
+      }).toList();
+    }
+
+    // Filter hanya tag
+    if (tagKeyword.isNotEmpty) {
+      return allNotes
+          .where((n) => n.body.toLowerCase().contains('#tag:$tagKeyword'))
+          .toList();
+    }
+
+    // Filter hanya pencarian (existing)
+    if (searchKeyword.isNotEmpty) {
+      return allNotes
+          .where((note) =>
+              note.title.toLowerCase().contains(searchKeyword) ||
+              note.body.toLowerCase().contains(searchKeyword))
+          .toList();
+    }
+
+    return List<Note>.unmodifiable(allNotes);
+  }
+
+  /// Ekstrak semua tag unik dari semua catatan.
+  List<String> get tags {
+    final tagPattern = RegExp(r'#tag:(\w+)', multiLine: true);
+    final Set<String> tagSet = {};
+    for (final note in _notes) {
+      for (final match in tagPattern.allMatches(note.body)) {
+        if (match.groupCount >= 1) {
+          tagSet.add(match.group(1)!.toLowerCase());
+        }
+      }
+    }
+    final result = tagSet.toList();
+    result.sort();
+    return result;
+  }
 
   void setQuery(String value) {
     if (_query == value) return;
     _query = value;
+    notifyListeners();
+  }
+
+  void setTagFilter(String value) {
+    if (_tagFilter == value) return;
+    _tagFilter = value;
+    notifyListeners();
+  }
+
+  void clearTagFilter() {
+    if (_tagFilter.isEmpty) return;
+    _tagFilter = '';
     notifyListeners();
   }
 

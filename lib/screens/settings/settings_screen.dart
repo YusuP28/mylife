@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/finance_provider.dart';
 import '../../providers/notes_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/vault_provider.dart';
+import '../../services/backup_service.dart';
+import '../../services/database_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -61,6 +64,9 @@ class SettingsScreen extends StatelessWidget {
               'File vault_key.json hanya berisi salt dan verifier (bukan password). Jangan menghapusnya selama data brankas masih dibutuhkan.',
             ],
           ),
+          // Bagian Baru: Backup & Restore
+          const SizedBox(height: 24),
+          const _BackupSection(),
         ],
       ),
     );
@@ -239,6 +245,175 @@ class _ThemeSelector extends StatelessWidget {
           }).toList(),
         ),
       ],
+    );
+  }
+}
+
+/// Widget untuk backup dan restore data secara offline.
+class _BackupSection extends StatefulWidget {
+  const _BackupSection();
+
+  @override
+  State<_BackupSection> createState() => _BackupSectionState();
+}
+
+class _BackupSectionState extends State<_BackupSection> {
+  bool _isBusy = false;
+  String? _status;
+
+  Future<void> _doBackup() async {
+    setState(() {
+      _isBusy = true;
+      _status = null;
+    });
+
+    try {
+      final db = DatabaseService.instance;
+      final backup = BackupService(await db.database);
+      final path = await backup.backup();
+      if (!mounted) return;
+      setState(() => _status = 'Backup berhasil: $path');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Backup berhasil disimpan ke:\n$path')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _status = 'Gagal: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal membuat backup: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
+  }
+
+  Future<void> _doRestore() async {
+    setState(() {
+      _isBusy = true;
+      _status = null;
+    });
+
+    try {
+      final file = await pickRestoreFile();
+      if (file == null) {
+        setState(() => _status = 'Batalkan oleh pengguna');
+        return;
+      }
+
+      final db = DatabaseService.instance;
+      final backup = BackupService(await db.database);
+      await backup.restore(file.path);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Restore berhasil! Silakan buka kembali aplikasi.')),
+      );
+
+      // Reset data di semua provider
+      if (mounted) {
+        // Handle provider reset if needed
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _status = 'Gagal: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal melakukan restore: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isBusy = false);
+    }
+  }
+
+  Future<File?> pickRestoreFile() async {
+    // Karena kita tidak bisa gunakan intent picker tanpa permission tambahan,
+    // kita langsung gunakan file backup yang sudah ada di aplikasi.
+    final backup = BackupService(await DatabaseService.instance.database);
+    final hasBackup = await backup.hasBackup();
+    if (!hasBackup) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak ada file backup yang ditemukan')),
+      );
+      return null;
+    }
+    final file = await backup._getBackupFile();
+    return file.exists() ? file : null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      elevation: 2,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Backup & Restore',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Salin data secara offline ke file JSON. '
+              'Backup disimpan di folder dokumen aplikasi.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isBusy ? null : _doBackup,
+                    icon: const Icon(Icons.backup),
+                    label: _isBusy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Backup'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isBusy ? null : _doRestore,
+                    icon: const Icon(Icons.restore),
+                    label: const Text('Restore'),
+                  ),
+                ),
+              ],
+            ),
+            if (_status != null) ...<Widget>[
+              const SizedBox(height: 12),
+              Text(
+                _status!,
+                style: TextStyle(
+                  color: _status!.startsWith('Gagal')
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.onSurface,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

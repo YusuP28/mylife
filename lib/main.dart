@@ -3,6 +3,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/finance_provider.dart';
+import 'providers/globals_provider.dart';
 import 'providers/notes_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/vault_lock_provider.dart';
@@ -37,6 +38,19 @@ class MylifeApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<VaultProvider>(
           create: (_) => VaultProvider(),
+        ),
+        ChangeNotifierProxyProvider3<
+            GlobalsProvider, NotesProvider, FinanceProvider, VaultProvider>(
+          create: (_) => GlobalsProvider(
+            notesProvider: _.read<NotesProvider>(),
+            financeProvider: _.read<FinanceProvider>(),
+            vaultProvider: _.read<VaultProvider>(),
+          ),
+          update: (_, notes, finance, vault, __) => GlobalsProvider(
+            notesProvider: notes,
+            financeProvider: finance,
+            vaultProvider: vault,
+          ),
         ),
         ChangeNotifierProvider<VaultLockProvider>(
           create: (_) => VaultLockProvider()..refreshStatus(),

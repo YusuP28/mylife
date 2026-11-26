@@ -85,9 +85,27 @@ class _NotesScreenState extends State<NotesScreen> {
               width: double.infinity,
               color: theme.colorScheme.errorContainer,
               padding: const EdgeInsets.all(12),
-              child: Text(
-                state.error!,
-                style: TextStyle(color: theme.colorScheme.onErrorContainer),
+              child: Row(
+                children: <Widget>[
+                  Icon(
+                    Icons.error_outline,
+                    color: theme.colorScheme.error,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      state.error!,
+                      style: TextStyle(
+                        color: theme.colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: state.loadNotes,
+                    child: const Text('Refresh'),
+                  ),
+                ],
               ),
             ),
           Padding(
@@ -113,6 +131,39 @@ class _NotesScreenState extends State<NotesScreen> {
               ),
             ),
           ),
+          // Tag Filter Chips
+          if (state.tags.isNotEmpty)
+            SizedBox(
+              height: 48,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                scrollDirection: Axis.horizontal,
+                itemCount: state.tags.length + 1,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    // "Semua" chip
+                    final isSelected = state.tagFilter.isEmpty;
+                    return FilterChip(
+                      selected: isSelected,
+                      onSelected: (_) => state.setTagFilter(''),
+                      label: const Text('Semua'),
+                      selectedColor: theme.colorScheme.primaryContainer,
+                      checkmarkColor: theme.colorScheme.onPrimaryContainer,
+                    );
+                  }
+                  final tag = state.tags[index - 1];
+                  final isSelected = state.tagFilter == tag;
+                  return FilterChip(
+                    selected: isSelected,
+                    onSelected: (_) => state.setTagFilter(tag),
+                    label: Text(tag),
+                    selectedColor: theme.colorScheme.primaryContainer,
+                    checkmarkColor: theme.colorScheme.onPrimaryContainer,
+                  );
+                },
+              ),
+            ),
           Expanded(child: _buildBody(state, theme)),
         ],
       ),
@@ -126,8 +177,8 @@ class _NotesScreenState extends State<NotesScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     if (notes.isEmpty) {
-      if (state.query.trim().isNotEmpty) {
-        return _NoResults(query: state.query.trim());
+      if (state.query.trim().isNotEmpty || state.tagFilter.isNotEmpty) {
+        return _NoResults(query: state.query.trim(), tag: state.tagFilter);
       }
       return _EmptyState(onAdd: () => _openEditor());
     }
@@ -187,6 +238,10 @@ String _cleanPreview(String body) {
       .replaceAll('*', '')
       // kode inline
       .replaceAll('`', '')
+      // tag metadata — sembunyikan dari preview
+      .replaceAll(RegExp(r'#tag:\w+', multiLine: true), '')
+      // pin metadata — sembunyikan dari preview
+      .replaceAll('!pin!', '')
       // rapatkan baris kosong berlebih
       .replaceAll(RegExp(r'\n{3,}'), '\n\n')
       .trim();
@@ -269,9 +324,10 @@ class _NoteTile extends StatelessWidget {
 }
 
 class _NoResults extends StatelessWidget {
-  const _NoResults({required this.query});
+  const _NoResults({required this.query, this.tag = ''});
 
   final String query;
+  final String tag;
 
   @override
   Widget build(BuildContext context) {
@@ -289,12 +345,24 @@ class _NoResults extends StatelessWidget {
           const SizedBox(height: 12),
           Text('Tidak ada hasil', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
-          Text(
-            'Tidak ditemukan catatan untuk "$query".',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          if (query.isNotEmpty || tag.isNotEmpty) ...<Widget>[
+            Text(
+              'Tidak ditemukan${query.isNotEmpty ? ' untuk "$query"' : ''}${tag.isNotEmpty ? ' dengan tag #$tag' : '.'}',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
+          ],
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: () {
+              // Clear both search and tag
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Kembali ke semua catatan'),
           ),
         ],
       ),
@@ -324,7 +392,7 @@ class _EmptyState extends StatelessWidget {
           Text('Belum ada catatan', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(
-            'Tekan tombol + untuk menambah catatan pertama.',
+            'Tekan tombol + untuk menambah catatan pertama.\n\nGunakan format #tag:namatag di dalam catatan untuk membuat tag.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,

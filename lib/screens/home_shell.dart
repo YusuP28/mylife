@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/globals_provider.dart';
 import '../providers/vault_lock_provider.dart';
 import '../providers/vault_provider.dart';
+import '../widgets/global_search_delegate.dart';
 import 'finance/finance_screen.dart';
 import 'notes/notes_screen.dart';
 import 'settings/settings_screen.dart';
@@ -76,11 +78,42 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final globals = context.watch<GlobalsProvider>();
+
     return Scaffold(
-      body: IndexedStack(index: _index, children: _screens),
+      body: Column(
+        children: [
+          // Search Bar
+          if (globals.hasActiveSearch)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Cari catatan, transaksi, atau vault...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onChanged: globals.setQuery,
+              ),
+            ),
+          // Content Area
+          Expanded(
+            child: globals.hasActiveSearch
+                ? const GlobalSearchDelegate()
+                : IndexedStack(index: _index, children: _screens),
+          ),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
+        onDestinationSelected: (value) {
+          if (globals.hasActiveSearch) {
+            globals.clearQuery();
+          }
+          setState(() => _index = value);
+        },
         destinations: const <NavigationDestination>[
           NavigationDestination(
             icon: Icon(Icons.sticky_note_2_outlined),

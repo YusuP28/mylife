@@ -77,6 +77,35 @@ class FinanceProvider extends ChangeNotifier {
   FinanceSummary get visibleSummary =>
       summarizeTransactions(visibleTransactions);
 
+  /// Ringkasan bulanan untuk semua transaksi (terbaru dulu).
+  /// Format: [Bulan] -> {income, expense, net}
+  Map<DateTime, FinanceSummary> get monthlySummaries {
+    final result = <DateTime, FinanceSummary>{};
+    for (final tx in _transactions) {
+      final key = DateTime(tx.occurredAt.year, tx.occurredAt.month);
+      final existing = result[key] ?? const FinanceSummary(income: 0, expense: 0, count: 0);
+      final newIncome = tx.isIncome ? existing.income + tx.amount : existing.income;
+      final newExpense = !tx.isIncome ? existing.expense + tx.amount : existing.expense;
+      final newCount = existing.count + 1;
+      result[key] = FinanceSummary(income: newIncome, expense: newExpense, count: newCount);
+    }
+    return Map<DateTime, FinanceSummary>.fromEntries(
+      result.entries.toList()..sort((a, b) => b.key.compareTo(a.key)),
+    );
+  }
+
+  /// Cek apakah transaksi bertanda berulang (shadow metadata `#rec:`).
+  static bool isRecurring(FinanceTransaction tx) {
+    return tx.note.contains('#rec:');
+  }
+
+  /// Dapatkan frekuensi recurring dari transaksi (default: 'bulanan').
+  static String getRecurringFrequency(FinanceTransaction tx) {
+    final pattern = RegExp(r'#rec:(\w+)');
+    final match = pattern.firstMatch(tx.note);
+    return match?.group(1) ?? 'bulanan';
+  }
+
   void setQuery(String value) {
     if (_query == value) return;
     _query = value;
