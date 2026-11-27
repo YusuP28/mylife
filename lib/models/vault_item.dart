@@ -1,4 +1,4 @@
-import 'package:cryptography/cryptography.dart' as crypto;
+import 'package:cryptography/cryptography.dart' as crypto show Hmac, Mac, SecretKeyData, sha1;
 
 /// Item brankas (kredensial/catatan sensitif).
 ///
