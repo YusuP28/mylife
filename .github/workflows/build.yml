@@ -83,7 +83,7 @@ jobs:
 
       - name: Build APK (split ABI - default for push)
         if: github.event_name == 'push' || github.event.inputs.build_type == 'release-split'
-        run: flutter build apk --split-per-abi --release --target-platform android-arm64
+        run: flutter build apk --split-per-abi --release --target-platform android-arm64 --verbose
 
       - name: Build APK (universal release)
         if: github.event.inputs.build_type == 'release'
