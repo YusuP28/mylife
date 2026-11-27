@@ -60,7 +60,7 @@ jobs:
     name: Build APK
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.inputs.build_type != ''
+    if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
@@ -81,8 +81,8 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build APK (split ABI)
-        if: github.event.inputs.build_type == 'release-split'
+      - name: Build APK (split ABI - default for push)
+        if: github.event_name == 'push' || github.event.inputs.build_type == 'release-split'
         run: flutter build apk --split-per-abi --release --target-platform android-arm64
 
       - name: Build APK (universal release)
