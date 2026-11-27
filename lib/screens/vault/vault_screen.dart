@@ -787,7 +787,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Opsi Password'),
-        content: const Text('Sertakan simbol khusus (!@#$%^&*...)?'),
+        content: const Text('Sertakan simbol khusus (!@#\$%^&*...)?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Hanya alfanumerik')),
           FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Ya, sertakan simbol')),
@@ -1080,11 +1080,14 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _urlCtrl,
-              enabled: !locked,
-              decoration: const InputDecoration(
-                labelText: 'URL (opsional)',
-                border: OutlineInputBorder(),
-              ),
+                    enabled: !locked,
+                    decoration: const InputDecoration(
+                      labelText: 'URL (opsional)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             TextField(

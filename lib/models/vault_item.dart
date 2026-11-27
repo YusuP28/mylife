@@ -1,4 +1,4 @@
-import 'package:cryptography/cryptography.dart' show Hmac, Mac, SecretKeyData, sha1;
+import 'package:cryptography/cryptography.dart' show Hmac, Mac, SecretKeyData, sha1, HashAlgorithm;
 
 /// Item brankas (kredensial/catatan sensitif).
 ///
@@ -130,8 +130,8 @@ class VaultItem {
 
     // HMAC-SHA1 using cryptography package
     final secretKey = SecretKeyData(secretBytes);
-    final hmac = Hmac(sha1, secretKey);
-    final mac = hmac.mac(timeBytes);
+    final hmac = Hmac(sha1 as HashAlgorithm);
+    final mac = hmac.mac(timeBytes, secretKey: secretKey);
     final digest = mac.bytes;
 
     // Dynamic truncation
@@ -157,7 +157,8 @@ List<int> base32Decode(String input) {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   final clean = input.replaceAll('=', '').toUpperCase();
   final bits = <int>[];
-  for (final char in clean.codeUnits) {
+  for (final codeUnit in clean.codeUnits) {
+    final char = String.fromCharCode(codeUnit);
     final idx = alphabet.indexOf(char);
     if (idx == -1) continue;
     for (int i = 4; i >= 0; i--) {
