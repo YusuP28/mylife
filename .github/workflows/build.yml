@@ -89,7 +89,18 @@ jobs:
 
       - name: Build APK (split ABI - default for push)
         if: github.event_name == 'push' || github.event.inputs.build_type == 'release-split'
-        run: flutter build apk --split-per-abi --release --target-platform android-arm64 --verbose
+        run: |
+          flutter build apk --split-per-abi --release --target-platform android-arm64 --verbose 2>&1 | tee build.log
+          exit_code=${PIPESTATUS[0]}
+          exit $exit_code
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
 
       - name: Build APK (universal release)
         if: github.event.inputs.build_type == 'release'
