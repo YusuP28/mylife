@@ -25,7 +25,7 @@ class VaultProvider extends ChangeNotifier {
     if (q.isEmpty) return items;
     return items.where((i) {
       final haystack =
-          '${i.title} ${i.username} ${i.password} ${i.url} ${i.notes}'
+          '${i.title} ${i.username} ${i.password} ${i.url} ${i.notes} ${i.totpUri ?? ''}'
               .toLowerCase();
       return haystack.contains(q);
     }).toList(growable: false);
@@ -69,6 +69,7 @@ class VaultProvider extends ChangeNotifier {
     required String password,
     required String url,
     required String notes,
+    String? totpUri,
   }) async {
     if (title.trim().isEmpty) {
       throw ArgumentError('Judul item brankas tidak boleh kosong');
@@ -82,6 +83,7 @@ class VaultProvider extends ChangeNotifier {
         password: password,
         url: url,
         notes: notes,
+        totpUri: totpUri,
         createdAt: now,
         updatedAt: now,
       ),
@@ -102,6 +104,7 @@ class VaultProvider extends ChangeNotifier {
         password: item.password,
         url: item.url,
         notes: item.notes,
+        totpUri: item.totpUri,
         createdAt: item.createdAt,
         updatedAt: DateTime.now(),
       ),

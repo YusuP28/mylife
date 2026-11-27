@@ -7,8 +7,8 @@ import 'vault_encryption_service.dart';
 class VaultRowCodec {
   const VaultRowCodec(this.encryption);
 
-  /// Hanya dua kolom ini yang dianggap sensitif.
-  static const List<String> sensitiveFields = <String>['password', 'notes'];
+  /// Kolom sensitif yang dienkripsi (password, notes, totp_uri berisi secret).
+  static const List<String> sensitiveFields = <String>['password', 'notes', 'totp_uri'];
 
   final VaultEncryptionService encryption;
 

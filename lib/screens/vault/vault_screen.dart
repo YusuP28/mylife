@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -711,8 +714,12 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
   late final TextEditingController _passwordCtrl;
   late final TextEditingController _urlCtrl;
   late final TextEditingController _notesCtrl;
+  late final TextEditingController _totpUriCtrl;
   bool _saving = false;
   bool _showPassword = false;
+  String? _totpCode;
+  int _totpSecondsRemaining = 0;
+  Timer? _totpTimer;
 
   bool get _isEditing => widget.item != null;
 
@@ -725,7 +732,9 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
     _passwordCtrl = TextEditingController(text: i?.password ?? '');
     _urlCtrl = TextEditingController(text: i?.url ?? '');
     _notesCtrl = TextEditingController(text: i?.notes ?? '');
+    _totpUriCtrl = TextEditingController(text: i?.totpUri ?? '');
     _showPassword = false;
+    _startTotpTimer();
   }
 
   @override
@@ -735,7 +744,72 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
     _passwordCtrl.dispose();
     _urlCtrl.dispose();
     _notesCtrl.dispose();
+    _totpUriCtrl.dispose();
+    _totpTimer?.cancel();
     super.dispose();
+  }
+
+  void _startTotpTimer() {
+    _totpTimer?.cancel();
+    _updateTotpCode();
+    _totpTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateTotpCode();
+    });
+  }
+
+  void _updateTotpCode() {
+    // Create a temporary item to generate TOTP
+    final tempItem = VaultItem(
+      id: 0,
+      title: '',
+      username: '',
+      password: '',
+      url: '',
+      notes: '',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      totpUri: _totpUriCtrl.text.isEmpty ? null : _totpUriCtrl.text,
+    );
+    setState(() {
+      _totpCode = tempItem.generateTotpCode();
+      _totpSecondsRemaining = tempItem.totpSecondsRemaining;
+    });
+  }
+
+  Future<void> _generatePassword() async {
+    final length = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => _PasswordGeneratorDialog(),
+    );
+    if (length == null || length < 4 || length > 128) return;
+
+    final useSymbols = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Opsi Password'),
+        content: const Text('Sertakan simbol khusus (!@#$%^&*...)?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Hanya alfanumerik')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Ya, sertakan simbol')),
+        ],
+      ),
+    );
+    if (useSymbols == null) return;
+
+    final password = _generateRandomPassword(length, useSymbols);
+    _passwordCtrl.text = password;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Password $length karakter dibuat')),
+    );
+  }
+
+  String _generateRandomPassword(int length, bool useSymbols) {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const symbols = '!@#\$%^&*()-_=+[]{}|;:,.<>?';
+    final pool = useSymbols ? chars + symbols : chars;
+    final random = Random.secure();
+    return List.generate(length, (_) => pool[random.nextInt(pool.length)]).join();
   }
 
   Future<void> _save() async {
@@ -769,6 +843,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
           password: _passwordCtrl.text,
           url: _urlCtrl.text,
           notes: _notesCtrl.text,
+          totpUri: _totpUriCtrl.text.isEmpty ? null : _totpUriCtrl.text,
         );
       } else {
         await provider.updateItem(
@@ -779,6 +854,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
             password: _passwordCtrl.text,
             url: _urlCtrl.text,
             notes: _notesCtrl.text,
+            totpUri: _totpUriCtrl.text.isEmpty ? null : _totpUriCtrl.text,
             createdAt: existing.createdAt,
             updatedAt: now,
           ),
@@ -863,6 +939,11 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     IconButton(
+                      onPressed: _generatePassword,
+                      icon: const Icon(Icons.auto_fix_high),
+                      tooltip: 'Generate Password',
+                    ),
+                    IconButton(
                       onPressed: () {
                         setState(() => _showPassword = !_showPassword);
                       },
@@ -880,8 +961,125 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            // TOTP / 2FA Section
+            if (_totpCode != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.verified_user, size: 20, color: theme.colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Kode 2FA (TOTP)',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${_totpSecondsRemaining}s',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onPrimary,
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      _totpCode!,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 28,
+                        letterSpacing: 4,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        TextButton.icon(
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: _totpCode!));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Kode 2FA disalin')),
+                            );
+                          },
+                          icon: const Icon(Icons.copy, size: 18),
+                          label: const Text('Salin Kode'),
+                        ),
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: () => setState(() => _totpUriCtrl.clear()),
+                          icon: const Icon(Icons.clear, size: 18),
+                          label: const Text('Hapus TOTP'),
+                          style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            // TOTP URI Input
             TextField(
-              controller: _urlCtrl,
+              controller: _totpUriCtrl,
+              enabled: !locked,
+              onChanged: (_) => _updateTotpCode(),
+              decoration: InputDecoration(
+                labelText: 'TOTP URI (opsional)',
+                hintText: 'otpauth://totp/...',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Format TOTP URI'),
+                        content: const Text(
+                          'Format standar:\n'
+                          'otpauth://totp/Issuer:accountName?secret=BASE32_SECRET&issuer=Issuer\n\n'
+                          'Contoh:\n'
+                          'otpauth://totp/Google:user@gmail.com?secret=JBSWY3DPEHPK3PXP&issuer=Google\n\n'
+                          'Dapatkan dari pengaturan 2FA layanan (QR code → manual entry).',
+                        ),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
+                        ],
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.help_outline),
+                  tooltip: 'Format TOTP URI',
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Password Generator Button
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _urlCtrl,
               enabled: !locked,
               decoration: const InputDecoration(
                 labelText: 'URL (opsional)',
@@ -1214,6 +1412,41 @@ class _QuickUnlockPasswordDialogState
           icon: const Icon(Icons.fingerprint),
           label: const Text('Aktifkan'),
         ),
+      ],
+    );
+  }
+}
+
+/// Dialog untuk generate password acak.
+class _PasswordGeneratorDialog extends StatefulWidget {
+  @override
+  State<_PasswordGeneratorDialog> createState() => _PasswordGeneratorDialogState();
+}
+
+class _PasswordGeneratorDialogState extends State<_PasswordGeneratorDialog> {
+  int _length = 16;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Generate Password'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Panjang: $_length karakter'),
+          Slider(
+            value: _length.toDouble(),
+            min: 4,
+            max: 128,
+            divisions: 31,
+            label: '$_length',
+            onChanged: (v) => setState(() => _length = v.round()),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+        FilledButton(onPressed: () => Navigator.pop(context, _length), child: const Text('OK')),
       ],
     );
   }

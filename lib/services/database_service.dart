@@ -13,7 +13,7 @@ class DatabaseService {
   static final DatabaseService instance = DatabaseService._();
 
   static const String _dbName = 'mylife.db';
-  static const int _dbVersion = 3;
+  static const int _dbVersion = 4;
 
   static const String tableNotes = 'notes';
   static const String tableTransactions = 'transactions';
@@ -39,6 +39,7 @@ class DatabaseService {
       'password TEXT NOT NULL DEFAULT \'\', '
       'url TEXT NOT NULL DEFAULT \'\', '
       'notes TEXT NOT NULL DEFAULT \'\', '
+      'totp_uri TEXT NOT NULL DEFAULT \'\', '
       'created_at INTEGER NOT NULL, '
       'updated_at INTEGER NOT NULL)';
 
@@ -90,6 +91,10 @@ class DatabaseService {
         }
         if (oldVersion < 3) {
           await db.execute(_createVaultItemsSql);
+        }
+        if (oldVersion < 4) {
+          // Add totp_uri column to existing vault_items table
+          await db.execute('ALTER TABLE $tableVaultItems ADD COLUMN totp_uri TEXT NOT NULL DEFAULT \'\'');
         }
       },
     );
