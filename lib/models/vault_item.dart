@@ -1,4 +1,4 @@
-import 'package:cryptography/cryptography.dart';
+import 'package:cryptography/cryptography.dart' as crypto;
 
 /// Item brankas (kredensial/catatan sensitif).
 ///
@@ -129,8 +129,8 @@ class VaultItem {
     final timeBytes = _int64ToBytes(timeStep);
 
     // HMAC-SHA1 using cryptography package
-    final secretKey = cryptography.SecretKeyData(secretBytes);
-    final hmac = cryptography.Hmac(cryptography.sha1);
+    final secretKey = crypto.SecretKeyData(secretBytes);
+    final hmac = crypto.Hmac(crypto.sha1);
     final mac = hmac.mac(timeBytes, secretKey: secretKey);
     final digest = mac.bytes;
 
