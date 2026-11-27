@@ -968,7 +968,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                  border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
