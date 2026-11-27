@@ -132,8 +132,10 @@ class VaultItem {
     final timeBytes = _int64ToBytes(timeStep);
 
     // HMAC-SHA1 using cryptography package
-    final hmac = Hmac.sha1(secretBytes);
-    final digest = hmac.mac(timeBytes).bytes;
+    final secretKey = SecretKeyData(secretBytes);
+    final hmac = Hmac.sha1(secretKey);
+    final mac = hmac.mac(timeBytes);
+    final digest = mac.bytes;
 
     // Dynamic truncation
     final offset = digest[19] & 0x0F;
