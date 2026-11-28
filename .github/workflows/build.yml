@@ -34,12 +34,12 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.16.0'
           channel: 'stable'
           cache: true
 
       - name: Get dependencies
-        run: flutter pub get --verbose 2>&1 | tee pub_get.log || (cat pub_get.log && exit 1)
+        run: flutter pub get
 
       - name: Analyze
         run: flutter analyze
@@ -74,12 +74,12 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.16.0'
           channel: 'stable'
           cache: true
 
       - name: Get dependencies
-        run: flutter pub get --verbose
+        run: flutter pub get
 
       - name: Accept Android licenses
         run: yes | flutter doctor --android-licenses || true
@@ -90,7 +90,7 @@ jobs:
       - name: Build APK (split ABI - default)
         if: github.event_name != 'pull_request'
         run: |
-          flutter build apk --split-per-abi --release --target-platform android-arm64 --verbose 2>&1 | tee build.log
+          flutter build apk --split-per-abi --release --target-platform android-arm64
           exit_code=${PIPESTATUS[0]}
           exit $exit_code
 
