@@ -749,9 +749,9 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
     super.dispose();
   }
 
-  void _startTotpTimer() {
+  Future<void> _startTotpTimer() async {
     _totpTimer?.cancel();
-    _updateTotpCode();
+    await _updateTotpCode();
     _totpTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       await _updateTotpCode();
     });
