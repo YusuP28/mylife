@@ -24,7 +24,7 @@ dependencies:
   google_fonts: ^6.1.0         # Custom fonts
   image_picker: ^1.0.7         # Add images to notes
   uuid: ^4.3.3                 # UUID generation for templates/strokes
-  share_plus: ^7.2.2           # Share exported PDFs
+  share_plus: ^10.0.0          # Share exported PDFs (compatible with Flutter 3.19+)
 
 dev_dependencies:
   flutter_test:
