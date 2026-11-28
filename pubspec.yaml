@@ -18,7 +18,7 @@ dependencies:
   cryptography: ^2.9.0
   flutter_secure_storage: ^10.3.1
   # New dependencies for EasyNotes features
-  flutter_quill: 9.6.0        # Rich text editor (pinned for Flutter 3.19 compatibility)
+  flutter_quill: 9.5.23        # Rich text editor (pinned for Flutter 3.19 compatibility)
   pdf: ^3.10.0                 # PDF export
   printing: ^5.11.0            # PDF preview/print
   google_fonts: ^6.1.0         # Custom fonts
