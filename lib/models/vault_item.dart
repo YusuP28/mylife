@@ -117,7 +117,7 @@ class VaultItem {
   }
 
   /// Generates current TOTP code from stored URI.
-  String? generateTotpCode() {
+  Future<String?> generateTotpCode() async {
     if (totpUri == null || totpUri!.isEmpty) return null;
     final parsed = parseTotpUri(totpUri!);
     if (parsed == null) return null;
@@ -131,7 +131,7 @@ class VaultItem {
     // HMAC-SHA1 using cryptography package
     final secretKey = crypto.SecretKeyData(secretBytes);
     final hmac = crypto.Hmac.sha1();
-    final mac = hmac.calculateMac(timeBytes, secretKey: secretKey);
+    final mac = await hmac.calculateMac(timeBytes, secretKey: secretKey);
     final digest = mac.bytes;
 
     // Dynamic truncation

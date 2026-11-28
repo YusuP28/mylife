@@ -752,12 +752,12 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
   void _startTotpTimer() {
     _totpTimer?.cancel();
     _updateTotpCode();
-    _totpTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _updateTotpCode();
+    _totpTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      await _updateTotpCode();
     });
   }
 
-  void _updateTotpCode() {
+  Future<void> _updateTotpCode() async {
     // Create a temporary item to generate TOTP
     final tempItem = VaultItem(
       id: 0,
@@ -771,7 +771,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
       totpUri: _totpUriCtrl.text.isEmpty ? null : _totpUriCtrl.text,
     );
     setState(() {
-      _totpCode = tempItem.generateTotpCode();
+      _totpCode = await tempItem.generateTotpCode();
       _totpSecondsRemaining = tempItem.totpSecondsRemaining;
     });
   }
@@ -1044,7 +1044,7 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
             TextField(
               controller: _totpUriCtrl,
               enabled: !locked,
-              onChanged: (_) => _updateTotpCode(),
+              onChanged: (_) async => await _updateTotpCode(),
               decoration: InputDecoration(
                 labelText: 'TOTP URI (opsional)',
                 hintText: 'otpauth://totp/...',
