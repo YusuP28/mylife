@@ -24,17 +24,7 @@ dependencies:
   google_fonts: ^6.1.0         # Custom fonts
   image_picker: ^1.0.7         # Add images to notes
   uuid: ^4.3.3                 # UUID generation for templates/strokes
-  share_plus: ^10.0.2          # Share exported PDFs (compatible with Flutter 3.19+)
-
-dependency_overrides:
-  # Force compatible versions for Flutter 3.22.0/Dart 3.4
-  flutter_quill: ^9.3.0
-  pdf: ^3.10.0
-  printing: ^5.11.0
-  google_fonts: ^6.1.0
-  image_picker: ^1.0.7
-  uuid: ^4.3.3
-  share_plus: ^10.0.2
+  share_plus: ^7.0.0           # Share exported PDFs (compatible with Flutter 3.10+)
 
 dev_dependencies:
   flutter_test:
