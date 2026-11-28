@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/note.dart';
+import '../models/drawing_stroke.dart';
+import '../models/template.dart';
 import '../services/database_service.dart';
 
 class NotesProvider extends ChangeNotifier {
@@ -10,12 +12,14 @@ class NotesProvider extends ChangeNotifier {
   final DatabaseService _service;
 
   List<Note> _notes = <Note>[];
+  List<Template> _templates = <Template>[];
   String _query = '';
   String _tagFilter = '';
   bool _loading = false;
   String? _error;
 
   List<Note> get notes => List<Note>.unmodifiable(_notes);
+  List<Template> get templates => List<Template>.unmodifiable(_templates);
   String get query => _query;
   String get tagFilter => _tagFilter;
   bool get loading => _loading;
@@ -96,7 +100,17 @@ class NotesProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _notes = await _service.getNotes();
+      final notes = await _service.getNotes();
+      // Load drawing strokes for each note
+      for (final note in notes) {
+        final strokes = await _service.getDrawingStrokes(note.id!);
+        // Note is immutable, we need to recreate with strokes
+        final index = notes.indexWhere((n) => n.id == note.id);
+        if (index != -1) {
+          notes[index] = note.copyWith(strokes: note.strokes);
+        }
+      }
+      _notes = notes;
     } catch (e) {
       _error = 'Gagal memuat catatan: $e';
     } finally {
@@ -105,25 +119,87 @@ class NotesProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addNote({required String title, required String body}) async {
+  Future<void> loadTemplates({String? category}) async {
+    try {
+      _templates = await _service.getTemplates(category: category);
+      notifyListeners();
+    } catch (e) {
+      _error = 'Gagal memuat template: $e';
+      notifyListeners();
+    }
+  }
+
+  Future<void> addNote({
+    required String title,
+    required String body,
+    List<DrawingStroke> strokes = const [],
+    String? templateId,
+    String? fontFamily,
+    String? backgroundId,
+  }) async {
     final now = DateTime.now();
     await _service.insertNote(
-      Note(title: title, body: body, createdAt: now, updatedAt: now),
+      Note(
+        title: title,
+        body: body,
+        createdAt: DateTime.now(),
+        updatedAt: now,
+        strokes: strokes,
+        templateId: templateId,
+        fontFamily: fontFamily,
+        backgroundId: backgroundId,
+      ),
     );
     await loadNotes();
   }
 
   Future<void> updateNote(Note note) async {
     await _service.updateNote(
-      Note(
-        id: note.id,
-        title: note.title,
-        body: note.body,
-        createdAt: note.createdAt,
-        updatedAt: DateTime.now(),
-      ),
+      note.copyWith(updatedAt: DateTime.now()),
     );
+    // Update drawing strokes if any
+    if (note.strokes.isNotEmpty) {
+      await _service.deleteDrawingStrokesForNote(note.id!);
+      await _service.insertDrawingStrokes(note.strokes);
+    }
     await loadNotes();
+  }
+
+  Future<void> saveDrawingStrokes(int noteId, List<DrawingStroke> strokes) async {
+    await _service.deleteDrawingStrokesForNote(noteId);
+    if (strokes.isNotEmpty) {
+      await _service.insertDrawingStrokes(strokes);
+    }
+    await loadNotes();
+  }
+
+  // === Template Methods ===
+
+  Future<void> addTemplate(Template template) async {
+    await _service.insertTemplate(template);
+    await loadTemplates();
+  }
+
+  Future<void> updateTemplate(Template template) async {
+    await _service.updateTemplate(template);
+    await loadTemplates();
+  }
+
+  Future<void> deleteTemplate(int id) async {
+    await _service.deleteTemplate(id);
+    await loadTemplates();
+  }
+
+  Future<void> createTemplateFromNote(Note note, {required String name, String category = 'custom'}) async {
+    final template = Template(
+      name: name,
+      contentJson: note.toMap().toString(), // Simplified - in real app serialize properly
+      category: category,
+      isCustom: true,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    await addTemplate(template);
   }
 
   Future<void> deleteNote(int id) async {

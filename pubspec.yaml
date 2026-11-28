@@ -17,6 +17,13 @@ dependencies:
   archive: ^4.7.1
   cryptography: ^2.9.0
   flutter_secure_storage: ^10.3.1
+  # New dependencies for EasyNotes features
+  flutter_quill: ^9.3.0        # Rich text editor
+  pdf: ^3.10.0                 # PDF export
+  printing: ^5.11.0            # PDF preview/print
+  google_fonts: ^6.1.0         # Custom fonts
+  image_picker: ^1.0.7         # Add images to notes
+  uuid: ^4.3.3                 # UUID generation for templates/strokes
 
 dev_dependencies:
   flutter_test:

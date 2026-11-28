@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/note.dart';
 import '../../providers/notes_provider.dart';
+import '../../drawing/drawing_screen.dart';
 import 'note_editor_screen.dart';
 
 class NotesScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class _NotesScreenState extends State<NotesScreen> {
 
   Future<void> _openEditor([Note? note]) async {
     await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (_) => NoteEditorScreen(note: note)),
+      MaterialPageRoute<void>(builder: (_) => DrawingNoteScreen(note: note)),
     );
   }
 

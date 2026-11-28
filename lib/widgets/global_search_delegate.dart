@@ -10,19 +10,19 @@ import '../models/vault_item.dart';
 import '../providers/globals_provider.dart';
 import '../providers/vault_provider.dart';
 import '../screens/finance/finance_editor_screen.dart';
-import '../screens/notes/note_editor_screen.dart';
+import '../screens/drawing/drawing_screen.dart';
 import '../screens/vault/vault_screen.dart';
 
 class GlobalSearchDelegate extends StatelessWidget {
   const GlobalSearchDelegate({super.key});
 
   void _navigateToNote(BuildContext context, int id, {String? title, String? body}) {
-    // NoteEditorScreen expects `note` (Note model), not noteId.
+    // DrawingNoteScreen expects `note` (Note model), not noteId.
     // For search results we open editor in view mode — pass null for new-note path.
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => NoteEditorScreen(note: null),
+        builder: (_) => DrawingNoteScreen(note: null),
       ),
     );
   }

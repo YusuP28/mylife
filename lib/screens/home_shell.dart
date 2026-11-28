@@ -8,6 +8,7 @@ import '../widgets/global_search_delegate.dart';
 import 'finance/finance_screen.dart';
 import 'notes/notes_screen.dart';
 import 'settings/settings_screen.dart';
+import 'templates/template_screen.dart';
 import 'vault/vault_screen.dart';
 
 class HomeShell extends StatefulWidget {
@@ -26,6 +27,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     NotesScreen(),
     FinanceScreen(),
     VaultScreen(),
+    TemplateScreen(),
     SettingsScreen(),
   ];
 
@@ -129,6 +131,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             icon: Icon(Icons.lock_outline),
             selectedIcon: Icon(Icons.lock),
             label: 'Vault',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.description_outlined),
+            selectedIcon: Icon(Icons.description),
+            label: 'Template',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

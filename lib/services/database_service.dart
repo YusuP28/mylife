@@ -4,6 +4,8 @@ import 'package:sqflite/sqflite.dart';
 import '../models/finance_transaction.dart';
 import '../models/note.dart';
 import '../models/vault_item.dart';
+import '../models/drawing_stroke.dart';
+import '../models/template.dart';
 import 'vault_encryption_service.dart';
 import 'vault_row_codec.dart';
 
@@ -13,11 +15,13 @@ class DatabaseService {
   static final DatabaseService instance = DatabaseService._();
 
   static const String _dbName = 'mylife.db';
-  static const int _dbVersion = 4;
+  static const int _dbVersion = 5;
 
   static const String tableNotes = 'notes';
   static const String tableTransactions = 'transactions';
   static const String tableVaultItems = 'vault_items';
+  static const String tableDrawingStrokes = 'drawing_strokes';
+  static const String tableTemplates = 'templates';
 
   /// Default [NoOpEncryption]: belum ada enkripsi sampai vault dibuka
   /// (Tahap 4B-4 mengisi ini lewat [vaultEncryption]).
@@ -59,6 +63,10 @@ class DatabaseService {
           'id INTEGER PRIMARY KEY AUTOINCREMENT, '
           'title TEXT NOT NULL, '
           'body TEXT NOT NULL DEFAULT \'\', '
+          'strokes TEXT NOT NULL DEFAULT \'\', '
+          'template_id TEXT NOT NULL DEFAULT \'\', '
+          'font_family TEXT NOT NULL DEFAULT \'\', '
+          'background_id TEXT NOT NULL DEFAULT \'\', '
           'created_at INTEGER NOT NULL, '
           'updated_at INTEGER NOT NULL)',
         );
@@ -74,6 +82,30 @@ class DatabaseService {
           'updated_at INTEGER NOT NULL)',
         );
         await db.execute(_createVaultItemsSql);
+        await db.execute(
+          'CREATE TABLE $tableDrawingStrokes ('
+          'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+          'note_id INTEGER NOT NULL, '
+          'stroke_data TEXT NOT NULL, '
+          'color INTEGER NOT NULL, '
+          'width REAL NOT NULL, '
+          'created_at INTEGER NOT NULL, '
+          'FOREIGN KEY(note_id) REFERENCES $tableNotes(id) ON DELETE CASCADE)',
+        );
+        await db.execute(
+          'CREATE TABLE $tableTemplates ('
+          'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+          'name TEXT NOT NULL, '
+          'thumbnail TEXT NOT NULL DEFAULT \'\', '
+          'content_json TEXT NOT NULL, '
+          'category TEXT NOT NULL DEFAULT \'\', '
+          'is_custom INTEGER NOT NULL DEFAULT 0, '
+          'created_at INTEGER NOT NULL, '
+          'updated_at INTEGER NOT NULL)',
+        );
+        await db.execute(
+          'CREATE INDEX idx_drawing_strokes_note_id ON $tableDrawingStrokes(note_id)',
+        );
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -95,6 +127,41 @@ class DatabaseService {
         if (oldVersion < 4) {
           // Add totp_uri column to existing vault_items table
           await db.execute('ALTER TABLE $tableVaultItems ADD COLUMN totp_uri TEXT NOT NULL DEFAULT \'\'');
+        }
+        if (oldVersion < 5) {
+          // Add new columns to notes table
+          await db.execute('ALTER TABLE $tableNotes ADD COLUMN strokes TEXT NOT NULL DEFAULT \'\'');
+          await db.execute('ALTER TABLE $tableNotes ADD COLUMN template_id TEXT NOT NULL DEFAULT \'\'');
+          await db.execute('ALTER TABLE $tableNotes ADD COLUMN font_family TEXT NOT NULL DEFAULT \'\'');
+          await db.execute('ALTER TABLE $tableNotes ADD COLUMN background_id TEXT NOT NULL DEFAULT \'\'');
+          
+          // Create drawing_strokes table
+          await db.execute(
+            'CREATE TABLE $tableDrawingStrokes ('
+            'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+            'note_id INTEGER NOT NULL, '
+            'stroke_data TEXT NOT NULL, '
+            'color INTEGER NOT NULL, '
+            'width REAL NOT NULL, '
+            'created_at INTEGER NOT NULL, '
+            'FOREIGN KEY(note_id) REFERENCES $tableNotes(id) ON DELETE CASCADE)',
+          );
+          await db.execute(
+            'CREATE INDEX idx_drawing_strokes_note_id ON $tableDrawingStrokes(note_id)',
+          );
+          
+          // Create templates table
+          await db.execute(
+            'CREATE TABLE $tableTemplates ('
+            'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+            'name TEXT NOT NULL, '
+            'thumbnail TEXT NOT NULL DEFAULT \'\', '
+            'content_json TEXT NOT NULL, '
+            'category TEXT NOT NULL DEFAULT \'\', '
+            'is_custom INTEGER NOT NULL DEFAULT 0, '
+            'created_at INTEGER NOT NULL, '
+            'updated_at INTEGER NOT NULL)',
+          );
         }
       },
     );
@@ -354,5 +421,97 @@ class DatabaseService {
   Future<void> clearVaultItems() async {
     final db = await database;
     await db.delete(tableVaultItems);
+  }
+
+  // === Drawing Strokes API ===
+
+  Future<List<DrawingStroke>> getDrawingStrokes(int noteId) async {
+    final db = await database;
+    final rows = await db.query(
+      tableDrawingStrokes,
+      where: 'note_id = ?',
+      whereArgs: [noteId],
+      orderBy: 'created_at ASC',
+    );
+    return rows.map(DrawingStroke.fromMap).toList(growable: false);
+  }
+
+  Future<int> insertDrawingStroke(DrawingStroke stroke) async {
+    final db = await database;
+    return db.insert(tableDrawingStrokes, stroke.toMap());
+  }
+
+  Future<int> insertDrawingStrokes(List<DrawingStroke> strokes) async {
+    if (strokes.isEmpty) return 0;
+    final db = await database;
+    var count = 0;
+    await db.transaction((txn) async {
+      for (final stroke in strokes) {
+        await txn.insert(tableDrawingStrokes, stroke.toMap());
+        count++;
+      }
+    });
+    return count;
+  }
+
+  Future<int> deleteDrawingStrokesForNote(int noteId) async {
+    final db = await database;
+    return db.delete(
+      tableDrawingStrokes,
+      where: 'note_id = ?',
+      whereArgs: [noteId],
+    );
+  }
+
+  // === Templates API ===
+
+  Future<List<Template>> getTemplates({String? category}) async {
+    final db = await database;
+    final where = category != null && category.isNotEmpty ? 'category = ?' : null;
+    final whereArgs = category != null && category.isNotEmpty ? [category] : null;
+    final rows = await db.query(
+      tableTemplates,
+      where: where,
+      whereArgs: whereArgs,
+      orderBy: 'updated_at DESC',
+    );
+    return rows.map(Template.fromMap).toList(growable: false);
+  }
+
+  Future<int> insertTemplate(Template template) async {
+    final db = await database;
+    return db.insert(tableTemplates, template.toMap());
+  }
+
+  Future<int> updateTemplate(Template template) async {
+    final db = await database;
+    return db.update(
+      tableTemplates,
+      template.toMap(),
+      where: 'id = ?',
+      whereArgs: [template.id],
+    );
+  }
+
+  Future<int> deleteTemplate(int id) async {
+    final db = await database;
+    return db.delete(
+      tableTemplates,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> insertTemplates(List<Template> templates) async {
+    if (templates.isEmpty) return 0;
+    final db = await database;
+    var count = 0;
+    await db.transaction((txn) async {
+      for (final template in templates) {
+        await txn.insert(tableTemplates, template.toMap());
+        count++;
+      }
+    });
+    return count;
   }
 }
