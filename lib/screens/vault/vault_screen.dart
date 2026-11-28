@@ -770,8 +770,9 @@ class _VaultEditorScreenState extends State<VaultEditorScreen> {
       updatedAt: DateTime.now(),
       totpUri: _totpUriCtrl.text.isEmpty ? null : _totpUriCtrl.text,
     );
+    final code = await tempItem.generateTotpCode();
     setState(() {
-      _totpCode = await tempItem.generateTotpCode();
+      _totpCode = code;
       _totpSecondsRemaining = tempItem.totpSecondsRemaining;
     });
   }
